@@ -1,9 +1,12 @@
+#![allow(unused)]
+
+mod model;
+
 use std::sync::Arc;
 
 #[tokio::main]
-async fn main() -> Option(()) {
+async fn main() {
     println!("Connecting do db...");
     let db = Arc::new(model::db::init_db().await);
     println!("Successfully connected to db.");
-    None
 }
