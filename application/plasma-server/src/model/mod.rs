@@ -9,7 +9,7 @@ use bson::{oid::ObjectId, Document, Bson};
 use thiserror::Error;
 use crate::error::BsonError;
 
-const DATABASE: &'static str = "voodoofist";
+const DATABASE: &'static str = "plasma";
 
 #[derive(Error, Debug)]
 pub enum Error {

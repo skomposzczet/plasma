@@ -1,4 +1,6 @@
 #![allow(unused)]
+extern crate pretty_env_logger;
+#[macro_use] extern crate log;
 
 mod model;
 mod rest;
@@ -10,6 +12,8 @@ use warp::Filter;
 
 #[tokio::main]
 async fn main() {
+    pretty_env_logger::init();
+
     println!("Connecting do db...");
     let db = Arc::new(model::db::init_db().await);
     println!("Successfully connected to db.");
