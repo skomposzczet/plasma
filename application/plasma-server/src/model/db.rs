@@ -39,3 +39,15 @@ async fn check_db_conn(db: &Db) -> Result<(), Error> {
     
     Ok(())
 }
+
+pub async fn get_by(db: &Db, filter: &Document, collection: &String) -> Result<Option<Document>, Error> {
+    let db = db
+        .database(DATABASE)
+        .collection::<mongodb::bson::Document>(collection);
+
+    let document = db.find_one(filter.clone(), None)
+        .await
+        .map_err(|_| Error::DbError("find", filter.to_string()))?;
+    
+    Ok(document)
+}

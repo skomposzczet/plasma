@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 mod model;
+mod error;
 
 use std::sync::Arc;
 

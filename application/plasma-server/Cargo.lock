@@ -820,6 +820,8 @@ dependencies = [
  "bson",
  "dotenv",
  "mongodb",
+ "serde",
+ "serde_json",
  "thiserror",
  "tokio",
 ]
