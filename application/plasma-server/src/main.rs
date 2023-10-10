@@ -2,6 +2,7 @@
 
 mod model;
 mod rest;
+mod security;
 mod error;
 
 use std::sync::Arc;
