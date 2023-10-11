@@ -1,8 +1,12 @@
+mod user;
+
 use std::{sync::Arc, convert::Infallible};
 use serde::Serialize;
 use serde_json::json;
-use crate::{model::{Db, self}, error};
 use warp::{reply::Json, Rejection, Filter, hyper::{HeaderMap, StatusCode}, http::HeaderValue, Reply};
+use crate::{model, error::AuthorizationError};
+use crate::error;
+use crate::{security::token::{jwt_from_header, decode_jwt}, model::Db};
 
 #[derive(Debug, Clone)]
 pub struct WebErrorMessage {
@@ -22,6 +26,16 @@ impl WebErrorMessage {
     }
     pub fn rejection(kind: &'static str, message: String, status_code: StatusCode) -> warp::Rejection {
         warp::reject::custom(WebErrorMessage {kind, message, status_code})
+    }
+}
+
+impl From<error::Error> for warp::Rejection {
+    fn from(other: error::Error) -> Self {
+        WebErrorMessage::rejection(
+            "error::Error",
+            format!("{}", other),
+            StatusCode::BAD_REQUEST,
+        )
     }
 }
 
@@ -45,21 +59,29 @@ impl From<error::BsonError> for warp::Rejection {
     }
 }
 
+impl From<error::AuthorizationError> for warp::Rejection {
+    fn from(other: error::AuthorizationError) -> Self {
+        WebErrorMessage::rejection(
+            "error::AuthError",
+            format!("{}", other),
+            StatusCode::UNAUTHORIZED,
+        )
+    }
+}
+
 pub fn routes(db: Arc<Db>) -> impl Filter<Extract = (impl Reply,), Error = Infallible> + Clone {
-    warp::path("hello")
-        .and(warp::path::param())
-        .and(warp::header("user-agent"))
-        .map(|param: String, agent: String| {
-            format!("Hello {}, whose agent is {}", param, agent)
-        })
+    user::account_paths(db.clone())
         .recover(handle_rejection)
 }
 
 async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
+    error!("ERROR - {:?}", err);
+
     let error_message = match err.find::<WebErrorMessage>() {
         Some(err) => err.clone(),
         None => WebErrorMessage::unknown()
     };
+    info!("{}", error_message.message);
 
     let result = json!({
         "error": error_message.kind
@@ -69,3 +91,31 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
     Ok(warp::reply::with_status(result, error_message.status_code))
 }
 
+fn json_response<T: Serialize>(data: &T) -> Result<Json, Rejection> {
+    let response = json!({
+        "data": data
+    });
+    Ok(warp::reply::json(&response))
+}
+
+fn with_auth() -> impl Filter<Extract = (String,), Error = Rejection> + Clone {
+    warp::header::headers_cloned()
+        .and_then(auth)
+}
+
+async fn auth(auth_header: HeaderMap<HeaderValue>) -> Result<String, warp::Rejection> {
+    let token = jwt_from_header(&auth_header)
+        .ok_or(AuthorizationError::MissingAuthHeader)?;
+
+    let token_data = match decode_jwt(&token) {
+        Ok(data) => data,
+        Err(err) => {
+            match err {
+                error::Error::JWTokenError(_) => return Err(AuthorizationError::from(err).into()),
+                _ => return Err(err.into())
+            }
+        }
+    };
+
+    Ok(token_data.claims.sub())
+}
