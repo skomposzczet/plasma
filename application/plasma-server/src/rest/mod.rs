@@ -1,4 +1,5 @@
 mod user;
+mod chat;
 
 use std::{sync::Arc, convert::Infallible};
 use serde::Serialize;
@@ -71,6 +72,7 @@ impl From<error::AuthorizationError> for warp::Rejection {
 
 pub fn routes(db: Arc<Db>) -> impl Filter<Extract = (impl Reply,), Error = Infallible> + Clone {
     user::account_paths(db.clone())
+        .or(chat::chat_paths(db.clone()))
         .recover(handle_rejection)
 }
 

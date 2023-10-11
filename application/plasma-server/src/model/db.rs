@@ -2,6 +2,7 @@ use mongodb::{Client, options::{ClientOptions, FindOptions}};
 use dotenv;
 use bson::{doc, Document};
 use super::{DATABASE, Error};
+use futures::TryStreamExt;
 
 const MONGO_USER: &str = "MONGO_USER";
 const MONGO_PW: &str = "MONGO_PW";
@@ -51,3 +52,18 @@ pub async fn get_by(db: &Db, filter: &Document, collection: &String) -> Result<O
     
     Ok(document)
 }
+
+pub async fn get_all_in_vec(db: &Db, filter: Document, options: impl Into<Option<FindOptions>>, collection: &str) -> Result<Vec<Document>, Error> {
+    let db = db
+        .database(DATABASE)
+        .collection::<mongodb::bson::Document>(collection);
+
+    let cursor = db.find(filter.clone(), options).await
+        .map_err(|_| Error::DbError("find", filter.to_string()))?;
+
+    let results: Vec<Document> = cursor.try_collect().await
+        .map_err(|_| Error::DbError("find", filter.to_string()))?;
+
+    Ok(results)
+}
+

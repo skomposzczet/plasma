@@ -12,6 +12,8 @@ pub enum Error {
     BodyError(&'static str),
     #[error("Invalid claim data: {0}")]
     InvalidClaimData(&'static str),
+    #[error("Internal error")]
+    InternalError,
 }
 
 #[derive(Error, Debug)]

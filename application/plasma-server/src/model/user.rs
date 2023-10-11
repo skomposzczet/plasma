@@ -2,8 +2,8 @@ use bson::doc;
 use serde::{Serialize, Deserialize};
 use mongodb::bson::oid::ObjectId;
 use crate::model::{Db, db, Error};
-use super::{objectid_from_str, from_document, BsonError};
 use crate::error;
+use super::{objectid_from_str, from_document, BsonError};
 use super::DATABASE;
 
 const COLLECTION: &'static str  = "user";
@@ -84,4 +84,16 @@ impl User {
         Ok(user)
     }
 
+    pub async fn get_by_username(db: &Db, username: &String) -> Result<User, Error> {
+        let filter = doc!{
+            "username": username.as_str()
+        };
+        let document = db::get_by(db, &filter, &String::from("user"))
+            .await?
+            .ok_or(Error::NoUserWithSuchEmail)?;
+        
+        let user = from_document(document)?;
+
+        Ok(user)
+    }
 }
