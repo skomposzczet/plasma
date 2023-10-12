@@ -58,6 +58,3 @@ async fn add_chat_handle(db: Arc<Db>, oid: String, body: HashMap<String, String>
     });
     json_response(&response)
 }
-
-
-

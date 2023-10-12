@@ -1,6 +1,7 @@
 pub mod db;
 pub mod user;
 pub mod chat;
+pub mod message;
 
 pub use db::Db;
 
