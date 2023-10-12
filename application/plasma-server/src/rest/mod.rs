@@ -6,7 +6,7 @@ use std::{sync::Arc, convert::Infallible};
 use serde::Serialize;
 use serde_json::json;
 use warp::{reply::Json, Rejection, Filter, hyper::{HeaderMap, StatusCode}, http::HeaderValue, Reply};
-use crate::{model, error::AuthorizationError};
+use crate::{model, error::AuthorizationError, ws};
 use crate::error;
 use crate::{security::token::{jwt_from_header, decode_jwt}, model::Db};
 
@@ -75,6 +75,7 @@ pub fn routes(db: Arc<Db>) -> impl Filter<Extract = (impl Reply,), Error = Infal
     user::account_paths(db.clone())
         .or(chat::chat_paths(db.clone()))
         .or(message::message_paths(db.clone()))
+        .or(ws::ws_paths(db.clone()))
         .recover(handle_rejection)
 }
 
@@ -102,7 +103,7 @@ fn json_response<T: Serialize>(data: &T) -> Result<Json, Rejection> {
     Ok(warp::reply::json(&response))
 }
 
-fn with_auth() -> impl Filter<Extract = (String,), Error = Rejection> + Clone {
+pub fn with_auth() -> impl Filter<Extract = (String,), Error = Rejection> + Clone {
     warp::header::headers_cloned()
         .and_then(auth)
 }

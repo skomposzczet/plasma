@@ -4,6 +4,7 @@ extern crate pretty_env_logger;
 
 mod model;
 mod rest;
+mod ws;
 mod security;
 mod error;
 
