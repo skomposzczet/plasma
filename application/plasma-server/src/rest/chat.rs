@@ -1,9 +1,8 @@
 use std::{sync::Arc, collections::HashMap};
-use bson::oid::ObjectId;
 use serde_json::json;
 use warp::{Filter, reject::Rejection, reply::Json};
-use crate::{model::{Db, chat::Chat, user::User}, error::Error};
-use super::{with_auth, json_response};
+use crate::{model::{Db, chat::Chat, user::User}, error::Error, server::with_auth};
+use super::json_response;
 
 pub fn chat_paths(db: Arc<Db>) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
     let with_db = warp::any()

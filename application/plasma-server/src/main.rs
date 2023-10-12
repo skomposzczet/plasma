@@ -1,8 +1,8 @@
-#![allow(unused)]
 extern crate pretty_env_logger;
 #[macro_use] extern crate log;
 
 mod model;
+mod server;
 mod rest;
 mod ws;
 mod security;
@@ -24,7 +24,7 @@ async fn main() {
 
     let log = warp::log("server::plasma");
 
-    let routes = rest::routes(db.clone())
+    let routes = server::routes(db.clone())
         .with(cors)
         .with(log);
 

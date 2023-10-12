@@ -7,7 +7,8 @@ use crate::model::{Db, user::User};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use crate::security::{hash::hashed_password, token};
-use crate::rest::{json_response, with_auth};
+use crate::rest::json_response;
+use crate::server::with_auth;
 
 #[derive(Deserialize, Debug)]
 struct RegisterBody {

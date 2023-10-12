@@ -1,10 +1,11 @@
 use std::sync::Arc;
 use bson::oid::ObjectId;
-use serde::{Serialize, Deserialize};
+use serde::Deserialize;
 use serde_json::json;
 use warp::{Filter, reject::Rejection, reply::Json};
-use crate::model::{Db, message::Message, objectid_from_str};
-use super::{with_auth, json_response};
+use crate::{model::{Db, message::Message, objectid_from_str}, server::with_auth};
+
+use super::json_response;
 
 #[derive(Deserialize)]
 struct SendMessageBody {
