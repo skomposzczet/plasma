@@ -1,3 +1,4 @@
+use bson::oid::ObjectId;
 use warp::{Filter, Rejection, reply::Json};
 use std::sync::Arc;
 use crate::error::AuthorizationError;
@@ -26,6 +27,13 @@ pub struct LoginResponse {
     pub jwtoken: String,
 }
 
+#[derive(Deserialize)]
+struct FindBody {
+    id: Option<ObjectId>,
+    email: Option<String>,
+    username: Option<String>,
+}
+
 pub fn account_paths(db: Arc<Db>) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
     let with_db = warp::any()
         .map(move || db.clone());
@@ -51,9 +59,17 @@ pub fn account_paths(db: Arc<Db>) -> impl Filter<Extract = (impl warp::Reply,), 
         .and(with_auth())
         .and_then(dashboard_handle);
 
+    let find = warp::path("user")
+        .and(warp::path::end())
+        .and(warp::post())
+        .and(with_db.clone())
+        .and(warp::body::json())
+        .and_then(find_handle);
+
     register
         .or(login)
         .or(dashboard)
+        .or(find)
 }
 
 async fn login_handle(db: Arc<Db>, body: LoginBody) -> Result<Json, Rejection> {
@@ -106,4 +122,8 @@ async fn dashboard_handle(db: Arc<Db>, id: String) -> Result<Json, Rejection> {
         "username": user.username()
     });
     json_response(&content)
+}
+
+async fn find_handle(db: Arc<Db>, body: FindBody) -> Result<Json, Rejection> {
+    todo!();
 }
