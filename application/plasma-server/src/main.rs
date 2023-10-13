@@ -9,22 +9,27 @@ mod security;
 mod error;
 
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use warp::Filter;
+
+type ClientsHandle = Arc<RwLock<ws::clients::Clients>>;
 
 #[tokio::main]
 async fn main() {
     pretty_env_logger::init();
 
-    println!("Connecting do db...");
+    info!("Connecting do db...");
     let db = Arc::new(model::db::init_db().await);
-    println!("Successfully connected to db.");
+    info!("Successfully connected to db.");
+
+    let clients = Arc::new(RwLock::new(ws::clients::Clients::new()));
 
     let cors = warp::cors()
         .allow_any_origin();
 
     let log = warp::log("server::plasma");
 
-    let routes = server::routes(db.clone())
+    let routes = server::routes(db.clone(), clients.clone())
         .with(cors)
         .with(log);
 

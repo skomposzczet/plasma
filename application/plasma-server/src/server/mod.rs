@@ -3,13 +3,14 @@ mod web_error;
 use std::{sync::Arc, convert::Infallible};
 use serde_json::json;
 use warp::{Rejection, Filter, hyper::HeaderMap, http::HeaderValue, Reply};
+use crate::ClientsHandle;
 use crate::{error::AuthorizationError, ws, rest, error};
 use crate::{security::token::{jwt_from_header, decode_jwt}, model::Db};
 use web_error::WebErrorMessage;
 
-pub fn routes(db: Arc<Db>) -> impl Filter<Extract = (impl Reply,), Error = Infallible> + Clone {
+pub fn routes(db: Arc<Db>, clients: ClientsHandle) -> impl Filter<Extract = (impl Reply,), Error = Infallible> + Clone {
     rest::rest_routes(db.clone())
-        .or(ws::ws_paths(db.clone()))
+        .or(ws::ws_paths(db.clone(), clients.clone()))
         .recover(handle_rejection)
 }
 
