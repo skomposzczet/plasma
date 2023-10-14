@@ -1124,6 +1124,7 @@ dependencies = [
  "sha3",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "warp",
 ]
 
