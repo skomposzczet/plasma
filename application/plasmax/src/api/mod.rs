@@ -36,16 +36,39 @@ impl Api {
             email: String::from(email),
             password: String::from(password),
         };
+
         let response = self.client
             .post(url)
             .json(&params)
             .send()
             .await;
+
         let jwt = response?
             .json::<response::OkResponse<response::LoginResponse>>().await?
             .data.jwtoken
             .clone();
 
         Ok(jwt)
+    }
+
+    pub async fn register(&self, email: &str, username: &str, password: String) -> Result<bool, ApiError> {
+        let url = Self::api_path("register");
+        let params = body::RegisterBody {
+            email: String::from(email),
+            username: String::from(username),
+            password: String::from(password),
+        };
+
+        let response = self.client
+            .post(url)
+            .json(&params)
+            .send()
+            .await;
+
+        let message = response?
+            .json::<response::OkResponse<response::RegisterResponse>>().await?
+            .data.message;
+
+        Ok(message.eq("success"))
     }
 }

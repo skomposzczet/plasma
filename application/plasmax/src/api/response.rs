@@ -6,6 +6,11 @@ pub struct OkResponse<T> {
 }
 
 #[derive(Deserialize)]
+pub struct RegisterResponse {
+    pub message: String,
+}
+
+#[derive(Deserialize)]
 pub struct LoginResponse {
     pub jwtoken: String,
 }
