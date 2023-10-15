@@ -71,4 +71,21 @@ impl Api {
 
         Ok(message.eq("success"))
     }
+
+    pub async fn dashboard(&self, token: &str) -> Result<String, ApiError> {
+        let url = Self::api_path("dashboard");
+
+        let response = self.client
+            .get(url)
+            .bearer_auth(token)
+            .send()
+            .await;
+
+        let username = response?
+            .json::<response::OkResponse<response::DashboardResponse>>().await?
+            .data
+            .username;
+
+        Ok(username)
+    }
 }

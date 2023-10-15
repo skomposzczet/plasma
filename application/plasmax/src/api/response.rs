@@ -14,3 +14,8 @@ pub struct RegisterResponse {
 pub struct LoginResponse {
     pub jwtoken: String,
 }
+
+#[derive(Deserialize)]
+pub struct DashboardResponse {
+    pub username: String,
+}
