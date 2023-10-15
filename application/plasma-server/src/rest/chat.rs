@@ -53,7 +53,7 @@ async fn add_chat_handle(db: Arc<Db>, oid: String, body: HashMap<String, String>
     let id = id.ok_or(Error::InternalError)?;
 
     let response = json!({
-        "Chat id": id
+        "chatid": id
     });
     json_response(&response)
 }

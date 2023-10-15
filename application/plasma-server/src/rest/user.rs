@@ -99,7 +99,7 @@ async fn register_handle(db: Arc<Db>, body: RegisterBody) -> Result<Json, Reject
     User::add_to_db(&db, &new_user).await?;
 
     let content = json!({
-        "Message": "Success",
+        "message": "success",
     });
     json_response(&content)
 }
