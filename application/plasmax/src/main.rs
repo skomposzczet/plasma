@@ -1,3 +1,5 @@
+mod account;
+
 use clap::{Parser, Subcommand};
 use std::io::Write;
 
