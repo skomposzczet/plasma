@@ -2,13 +2,15 @@ use std::{fs, io::{Error, ErrorKind}, path::PathBuf, marker::PhantomData};
 use home::home_dir;
 use thiserror::Error;
 
+use crate::api::{Api, ApiError};
+
 #[derive(Error, Debug)]
 pub enum AccountError {
     #[error(transparent)]
     NoTokenError( #[from] Error ),
 }
 
-const TOKEN_PATH: &'static str = ".plasmax/token";
+const TOKEN_PATH: &'static str = ".plasmax";
 const TOKEN_FILENAME: &'static str = "token";
 
 pub struct Authorized;
@@ -33,12 +35,12 @@ impl Account {
 }
 
 impl Account<NotAuthorized> {
-    pub fn try_login_token(self) -> Result<Account<Authorized>, AccountError> {
-        let token = Some(self.read_token()?);
+    pub fn try_login_token(&self) -> Result<Account<Authorized>, AccountError> {
+        let token = self.read_token()?;
         let account = Account {
-            mail: self.mail,
+            mail: self.mail.clone(),
             username: Some(String::new()),
-            token,
+            token: Some(token),
             state: PhantomData,
         };
         Ok(account)
@@ -57,6 +59,19 @@ impl Account<NotAuthorized> {
         let path = self.token_path()?;
         let token = fs::read_to_string(path)?;
         Ok(token)
+    }
+
+    pub async fn login(self, password: String, api: &Api) -> Result<Account<Authorized>, ApiError> {
+        let token = api.login(&self.mail, password).await?;
+        println!("token: {}", token);
+
+        let account = Account {
+            mail: self.mail,
+            username: Some(String::new()),
+            token: Some(token),
+            state: PhantomData,
+        };
+        Ok(account)
     }
 }
 

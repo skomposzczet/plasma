@@ -1,7 +1,12 @@
+#[allow(unused)]
 mod account;
+mod api;
 
+use api::Api;
 use clap::{Parser, Subcommand};
 use std::io::Write;
+
+use crate::account::Account;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -34,12 +39,21 @@ fn get_password() -> String {
     pw
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
+    let api = Api::new();
     let cli = Cli::parse();
     match &cli.command {
         Some(Commands::Login { mail } ) => {
-            let pw = get_password();
-            println!("ml={}, pw={}", mail, pw);
+            let acc = Account::new(mail.clone());
+            let acc = match acc.try_login_token() {
+                Ok(a) => a,
+                Err(_) => {
+                    let pw = get_password();
+                    println!("ml={}, pw={}", mail, pw);
+                    acc.login(pw, &api).await.unwrap()
+                },
+            };
         },
         Some(Commands::Register { mail, username } ) => {
             let pw = get_password();
