@@ -1,9 +1,12 @@
 #[allow(unused)]
+mod error;
 mod account;
 mod api;
 
+use account::Authorized;
 use api::Api;
 use clap::{Parser, Subcommand};
+use error::PlasmaError;
 use std::io::Write;
 
 use crate::account::Account;
@@ -39,26 +42,37 @@ fn get_password() -> String {
     pw
 }
 
-#[tokio::main]
-async fn main() {
-    let api = Api::new();
-    let cli = Cli::parse();
+async fn cli_get_accout(cli: Cli, api: &Api) -> Result<Option<Account<Authorized>>, PlasmaError> {
     match &cli.command {
         Some(Commands::Login { mail } ) => {
-            let acc = Account::new(mail.clone());
-            let acc = match acc.try_login_token() {
+            let acc = match Account::new(mail.clone()).try_login_token(&api).await {
                 Ok(a) => a,
                 Err(_) => {
                     let pw = get_password();
-                    println!("ml={}, pw={}", mail, pw);
-                    acc.login(pw, &api).await.unwrap()
+                    Account::new(mail.clone()).login(pw, &api).await.unwrap()
                 },
             };
+            Ok(Some(acc))
         },
         Some(Commands::Register { mail, username } ) => {
             let pw = get_password();
-            println!("ml={}, un={}, pw={}", mail, username, pw);
+            api.register(mail, username, pw).await?;
+            Ok(None)
         },
-        None => {},
+        None => Ok(None),
     }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), PlasmaError> {
+    let api = Api::new();
+    let cli = Cli::parse();
+
+    let acc = cli_get_accout(cli, &api).await?;
+    if acc.is_none() {
+        return Ok(());
+    }
+    let acc = acc.unwrap();
+
+    Ok(())
 }

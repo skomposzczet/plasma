@@ -1,16 +1,9 @@
-use std::{fs, io::{Error, ErrorKind}, path::PathBuf, marker::PhantomData};
+use std::{fs::{self, File, create_dir_all}, io::{Error, ErrorKind, Write}, path::PathBuf, marker::PhantomData};
 use home::home_dir;
-use thiserror::Error;
+use crate::api::Api;
+use crate::error::PlasmaError;
 
-use crate::api::{Api, ApiError};
-
-#[derive(Error, Debug)]
-pub enum AccountError {
-    #[error(transparent)]
-    NoTokenError( #[from] Error ),
-}
-
-const TOKEN_PATH: &'static str = ".plasmax";
+const BASE_PATH: &'static str = ".plasmax";
 const TOKEN_FILENAME: &'static str = "token";
 
 pub struct Authorized;
@@ -32,25 +25,18 @@ impl Account {
             state: PhantomData,
         }
     }
-}
 
-impl Account<NotAuthorized> {
-    pub fn try_login_token(&self) -> Result<Account<Authorized>, AccountError> {
-        let token = self.read_token()?;
-        let account = Account {
-            mail: self.mail.clone(),
-            username: Some(String::new()),
-            token: Some(token),
-            state: PhantomData,
-        };
-        Ok(account)
+    fn account_path(&self) -> Result<PathBuf, Error> {
+        let path = home_dir()
+            .ok_or(Error::new(ErrorKind::NotFound, "Impossible to get home directory."))?
+            .join(BASE_PATH)
+            .join(self.mail.clone());
+        create_dir_all(&path)?;
+        Ok(path)
     }
 
     fn token_path(&self) -> Result<PathBuf, Error> {
-        let path = home_dir()
-            .ok_or(Error::new(ErrorKind::NotFound, "Impossible to get home directory."))?
-            .join(TOKEN_PATH)
-            .join(self.mail.clone())
+        let path = self.account_path()?
             .join(TOKEN_FILENAME);
         Ok(path)
     }
@@ -61,17 +47,31 @@ impl Account<NotAuthorized> {
         Ok(token)
     }
 
-    pub async fn login(self, password: String, api: &Api) -> Result<Account<Authorized>, ApiError> {
-        let token = api.login(&self.mail, password).await?;
-        println!("token: {}", token);
+    fn save_token(&self, token: &str) -> Result<(), Error> {
+        let path = self.token_path()?;
+        let mut file = File::create(path)?;
+        file.write_all(token.as_bytes())?;
+        Ok(())
+    }
+}
 
+impl Account<NotAuthorized> {
+    pub async fn try_login_token(self, api: &Api) -> Result<Account<Authorized>, PlasmaError> {
+        let token = self.read_token()?;
+        let username = api.dashboard(&token).await?;
         let account = Account {
-            mail: self.mail,
-            username: Some(String::new()),
+            mail: self.mail.clone(),
+            username: Some(username),
             token: Some(token),
             state: PhantomData,
         };
         Ok(account)
+    }
+
+    pub async fn login(self, password: String, api: &Api) -> Result<Account<Authorized>, PlasmaError> {
+        let token = api.login(&self.mail, password).await?;
+        self.save_token(&token)?;
+        self.try_login_token(api).await
     }
 }
 
