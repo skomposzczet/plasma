@@ -6,7 +6,7 @@ use warp::{hyper::{HeaderMap, header::AUTHORIZATION}, http::HeaderValue};
 use dotenv;
 use crate::error::Error;
 
-const TOKEN_DURATION: i64 = 60;
+const TOKEN_DURATION: i64 = 7 * 24 * 60;
 const SECRET_KEY: &str = "SECRET";
 const BEARER: &str = "Bearer ";
 
