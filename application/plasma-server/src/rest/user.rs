@@ -35,6 +35,23 @@ struct FindBody {
     username: Option<String>,
 }
 
+#[derive(Serialize)]
+struct UserResponse {
+    id: Option<ObjectId>,
+    email: String,
+    username: String,
+}
+
+impl From<User> for UserResponse {
+    fn from(user: User) -> Self {
+        UserResponse {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+        }
+    }
+}
+
 pub fn account_paths(db: Arc<Db>) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
     let with_db = warp::any()
         .map(move || db.clone());
@@ -126,5 +143,25 @@ async fn dashboard_handle(db: Arc<Db>, id: String) -> Result<Json, Rejection> {
 }
 
 async fn find_handle(db: Arc<Db>, body: FindBody) -> Result<Json, Rejection> {
-    todo!();
+    let user = {
+        if body.id.is_some() {
+            Some(User::get_by_id(&db, &format!("ObjectId(\"{}\")",body.id.unwrap())).await?)
+        } else if body.username.is_some() {
+            Some(User::get_by_username(&db, &body.username.unwrap()).await?)
+        } else if body.email.is_some() {
+            Some(User::get_by_email(&db, &body.email.unwrap()).await?)
+        } else {
+            None
+        }
+    };
+
+    let user = match user {
+        Some(u) => Some(UserResponse::from(u)),
+        None => None,
+    };
+
+    let content = json!({
+        "user": user
+    });
+    json_response(&content)
 }

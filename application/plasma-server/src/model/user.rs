@@ -11,9 +11,9 @@ const COLLECTION: &'static str  = "user";
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
-    id: Option<ObjectId>,
-    email: String,
-    username: String,
+    pub id: Option<ObjectId>,
+    pub email: String,
+    pub username: String,
     password: String,
 }
 
