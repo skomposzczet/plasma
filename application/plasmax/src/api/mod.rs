@@ -1,5 +1,5 @@
-mod body;
-mod response;
+pub mod body;
+pub mod response;
 
 use reqwest::Client;
 use url::Url;
@@ -87,5 +87,40 @@ impl Api {
             .username;
 
         Ok(username)
+    }
+
+    pub async fn find(&self, token: &str, params: body::FindBody) -> Result<response::User, ApiError> {
+        let url = Self::api_path("user");
+
+        let response = self.client
+            .post(url)
+            .bearer_auth(token)
+            .json(&params)
+            .send()
+            .await;
+
+        let user = response?
+            .json::<response::OkResponse<response::FindResponse>>().await?
+            .data
+            .user;
+
+        Ok(user)
+    }
+
+    pub async fn chats(&self, token: &str) -> Result<Vec<response::Chat>, ApiError> {
+        let url = Self::api_path("chats");
+
+        let response = self.client
+            .get(url)
+            .bearer_auth(token)
+            .send()
+            .await;
+
+        let chats = response?
+            .json::<response::OkResponse<response::ChatsResponse>>().await?
+            .data
+            .chats;
+
+        Ok(chats)
     }
 }

@@ -1,3 +1,4 @@
+use bson::oid::ObjectId;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -18,4 +19,28 @@ pub struct LoginResponse {
 #[derive(Deserialize)]
 pub struct DashboardResponse {
     pub username: String,
+}
+
+#[derive(Deserialize)]
+pub struct User {
+    pub id: ObjectId,
+    pub email: String,
+    pub username: String,
+}
+
+#[derive(Deserialize)]
+pub struct FindResponse {
+    pub user: User,
+}
+
+#[derive(Deserialize)]
+pub struct Chat {
+    #[serde(rename = "_id")]
+    pub id: ObjectId,
+    pub users: Vec<ObjectId>,
+}
+
+#[derive(Deserialize)]
+pub struct ChatsResponse {
+    pub chats: Vec<Chat>,
 }
