@@ -2,6 +2,7 @@
 mod error;
 mod account;
 mod api;
+mod chats;
 
 use account::Authorized;
 use api::Api;
@@ -73,6 +74,8 @@ async fn main() -> Result<(), PlasmaError> {
         return Ok(());
     }
     let acc = acc.unwrap();
+    let chats = acc.chats(&api).await?;
+    println!("{:?}", chats);
 
     Ok(())
 }

@@ -1,6 +1,6 @@
 use std::{fs::{self, File, create_dir_all}, io::{Error, ErrorKind, Write}, path::PathBuf, marker::PhantomData};
 use home::home_dir;
-use crate::api::Api;
+use crate::{api::{Api, body::FindBody}, chats::{Chats, get_non_user_id}};
 use crate::error::PlasmaError;
 
 const BASE_PATH: &'static str = ".plasmax";
@@ -78,5 +78,22 @@ impl Account<NotAuthorized> {
 impl Account<Authorized> {
     pub fn token(&self) -> &str {
         self.token.as_ref().unwrap()
+    }
+
+    pub async fn chats(&self, api: &Api) -> Result<Chats, PlasmaError> {
+        let chats = api.chats(self.token()).await?;
+        let params = FindBody::username(self.username.clone().unwrap());
+        let ownid = api.find(self.token(), params).await?.id;
+
+        let mut usernames: Vec<String> = Vec::new();
+        for chat in chats.iter() {
+            let id = get_non_user_id(&chat.users, &ownid);
+            let p = FindBody::id(id.unwrap());
+            let un = api.find(self.token(), p).await.unwrap().username;
+            usernames.push(un);
+        }
+        let chats = Chats::new(chats, usernames, ownid);
+
+        Ok(chats)
     }
 }
