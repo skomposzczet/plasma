@@ -1,6 +1,7 @@
 pub mod body;
 pub mod response;
 
+use bson::oid::ObjectId;
 use reqwest::Client;
 use url::Url;
 
@@ -122,5 +123,27 @@ impl Api {
             .chats;
 
         Ok(chats)
+    }
+
+    pub async fn chat(&self, token: &str, member: &str) -> Result<ObjectId, ApiError> {
+        let url = Self::api_path("chat");
+
+        let params = body::ChatBody {
+            member: String::from(member),
+        };
+
+        let response = self.client
+            .post(url)
+            .bearer_auth(token)
+            .json(&params)
+            .send()
+            .await;
+
+        let chat = response?
+            .json::<response::OkResponse<response::ChatResponse>>().await?
+            .data
+            .chatid;
+
+        Ok(chat)
     }
 }

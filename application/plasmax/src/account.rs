@@ -1,4 +1,5 @@
 use std::{fs::{self, File, create_dir_all}, io::{Error, ErrorKind, Write}, path::PathBuf, marker::PhantomData};
+use bson::oid::ObjectId;
 use home::home_dir;
 use crate::{api::{Api, body::FindBody}, chats::{Chats, get_non_user_id}};
 use crate::error::PlasmaError;
@@ -95,5 +96,10 @@ impl Account<Authorized> {
         let chats = Chats::new(chats, usernames, ownid);
 
         Ok(chats)
+    }
+
+    pub async fn chat(&self, api: &Api, member: &str) -> Result<ObjectId, PlasmaError> {
+        let chat = api.chat(self.token(), member).await?;
+        Ok(chat)
     }
 }

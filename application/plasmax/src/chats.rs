@@ -2,19 +2,19 @@ use std::iter::zip;
 use bson::oid::ObjectId;
 use crate::api::response;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UserHandle {
     pub id: ObjectId,
     pub username: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Chat {
     pub id: ObjectId,
     pub user: UserHandle,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Chats {
     pub chats: Vec<Chat>,
 }
@@ -43,5 +43,13 @@ impl Chats {
             .collect();
 
         Chats { chats: cs }
+    }
+}
+
+impl IntoIterator for Chats {
+    type Item = Chat;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.chats.into_iter()
     }
 }

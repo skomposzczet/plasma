@@ -29,3 +29,8 @@ impl FindBody {
         FindBody { id: None, email: None, username: Some(username) }
     }
 }
+
+#[derive(Serialize)]
+pub struct ChatBody {
+    pub member: String,
+}

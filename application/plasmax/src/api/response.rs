@@ -44,3 +44,8 @@ pub struct Chat {
 pub struct ChatsResponse {
     pub chats: Vec<Chat>,
 }
+
+#[derive(Deserialize)]
+pub struct ChatResponse {
+    pub chatid: ObjectId,
+}
