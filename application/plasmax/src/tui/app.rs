@@ -1,3 +1,4 @@
+use crossterm::event::KeyCode;
 use ratatui::widgets::ListState;
 
 use crate::chats::Chat;
@@ -61,14 +62,62 @@ impl<T> StatefulList<T> {
     }
 }
 
+#[derive(PartialEq)]
+pub enum Mode {
+    Normal,
+    BrowseChats,
+    NewChat,
+    Message,
+}
+
 pub struct App {
+    pub mode: Mode,
     pub items: StatefulList<Chat>,
 }
 
 impl App {
     pub fn new(chats: Vec<Chat>) -> App {
         App {
+            mode: Mode::Normal,
             items: StatefulList::with_items(chats),
         }
+    }
+
+    pub fn handle_evt(&mut self, key: KeyCode) -> bool {
+        match self.mode {
+            Mode::Normal => self.handle_evt_normal(key),
+            Mode::BrowseChats => self.handle_evt_browse_chats(key),
+            Mode::NewChat => self.handle_evt_new_chat(key),
+            Mode::Message => self.handle_evt_message(key),
+        }
+    }
+
+    fn handle_evt_browse_chats(&mut self, key: KeyCode) -> bool {
+        match key {
+            KeyCode::Left => self.items.unselect(),
+            KeyCode::Down => self.items.next(),
+            KeyCode::Up => self.items.previous(),
+            KeyCode::Right => self.items.show(),
+            _ => return false,
+        }
+        return true;
+    }
+
+    fn handle_evt_normal(&mut self, key: KeyCode) -> bool {
+        match key {
+            KeyCode::Char('b') => self.mode = Mode::BrowseChats,
+            KeyCode::Char('n') => self.mode = Mode::NewChat,
+            KeyCode::Char('m') => self.mode = Mode::Message,
+            _ => return false,
+        }
+        return true;
+    }
+
+    fn handle_evt_new_chat(&mut self, key: KeyCode) -> bool {
+        todo!();
+    }
+
+    fn handle_evt_message(&mut self, key: KeyCode) -> bool {
+        todo!();
     }
 }

@@ -8,7 +8,7 @@ mod tui;
 use account::Authorized;
 use api::Api;
 use ratatui::Terminal;
-use tui::app::App;
+use tui::app::{App, Mode};
 use clap::{Parser, Subcommand};
 use error::PlasmaError;
 use std::io::Write;
@@ -130,12 +130,15 @@ fn run_app<B: Backend>(
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
-                        KeyCode::Char('q') => return Ok(()),
-                        KeyCode::Left => app.items.unselect(),
-                        KeyCode::Down => app.items.next(),
-                        KeyCode::Up => app.items.previous(),
-                        KeyCode::Right => app.items.show(),
-                        _ => {}
+                        KeyCode::Char('q') => {
+                            if app.mode == Mode::Normal {
+                                return Ok(());
+                            }
+                        },
+                        KeyCode::Esc => app.mode = Mode::Normal,
+                        _ => {
+                            app.handle_evt(key.code);
+                        },
                     }
                 }
             }
