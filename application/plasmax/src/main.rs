@@ -6,6 +6,7 @@ mod chats;
 
 use account::Authorized;
 use api::Api;
+use chats::Chat;
 use clap::{Parser, Subcommand};
 use error::PlasmaError;
 use std::io::Write;
@@ -133,20 +134,14 @@ impl<T> StatefulList<T> {
     }
 }
 
-struct App<'a> {
-    items: StatefulList<(&'a str, usize)>,
+struct App {
+    items: StatefulList<Chat>,
 }
 
-impl<'a> App<'a> {
-    fn new() -> App<'a> {
+impl App {
+    fn new(chats: Vec<Chat>) -> App {
         App {
-            items: StatefulList::with_items(vec![
-                ("Item0", 1),
-                ("Item1", 2),
-                ("Item2", 1),
-                ("Item3", 3),
-                ("Item4", 1),
-            ]),
+            items: StatefulList::with_items(chats),
         }
     }
 }
@@ -171,7 +166,7 @@ async fn main() -> Result<(), PlasmaError> {
     let mut terminal = Terminal::new(backend)?;
 
     let tick_rate = Duration::from_millis(1000);
-    let app = App::new();
+    let app = App::new(chats.chats.clone());
     let res = run_app(&mut terminal, app, tick_rate);
 
     disable_raw_mode()?;
@@ -221,7 +216,7 @@ fn run_app<B: Backend>(
 fn ui<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(20), Constraint::Percentage(80)])
+        .constraints([Constraint::Percentage(80), Constraint::Percentage(20)])
         .split(f.size());
     
     let chunks = chunks
@@ -230,6 +225,7 @@ fn ui<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut App) {
             Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
+                    Constraint::Length(1),
                     Constraint::Percentage(100), // fills remaining space
                     Constraint::Min(5),
                 ])
@@ -245,14 +241,14 @@ fn ui<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut App) {
         .items
         .items
         .iter()
-        .map(|i| {
-            let lines = vec![Line::from(i.0)];
+        .map(|chat| {
+            let lines = vec![Line::from(chat.user.username.clone())];
             ListItem::new(lines).style(Style::default())
         })
         .collect();
 
     let items = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("List"))
+        .block(Block::default().borders(Borders::ALL).title("Chats"))
         .highlight_style(
             Style::default()
                 .bg(Color::LightGreen)
@@ -260,7 +256,11 @@ fn ui<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut App) {
         )
         .highlight_symbol(">> ");
 
-    f.render_stateful_widget(items, chunks[0], &mut app.items.state);
+    f.render_stateful_widget(items, chunks[4], &mut app.items.state);
+
+    f.render_widget(Block::default().borders(Borders::ALL).title("New chat"), chunks[5]);
+    f.render_widget(Block::default().borders(Borders::ALL).title(""), chunks[1]);
+    f.render_widget(Block::default().borders(Borders::ALL).title("Message"), chunks[2]);
 
     match app.items.get() {
         Some(cur) => {
