@@ -1,6 +1,6 @@
 use ratatui::{prelude::*, widgets::*};
 use itertools::Itertools;
-use super::app::App;
+use super::app::{App, Mode};
 
 pub fn ui<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut App) {
     let chunks = create_layout(f.size());
@@ -69,7 +69,19 @@ fn draw_chats_widget<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut A
 }
 
 fn draw_new_chat_input<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
-    f.render_widget(Block::default().borders(Borders::ALL).title("New chat"), area);
+    let input = Paragraph::new(app.new_chat_input.input.as_str())
+        .style(match app.mode {
+            Mode::NewChat => Style::default().fg(Color::Yellow),
+            _ => Style::default(),
+        })
+        .block(Block::default().borders(Borders::ALL).title("New chat"));
+    f.render_widget(input, area);
+    if app.mode == Mode::NewChat {
+        f.set_cursor(
+            area.x + app.new_chat_input.cursor_position as u16 + 1,
+            area.y + 1,
+        )
+    }
 }
 
 fn draw_chat_widget<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
@@ -77,7 +89,19 @@ fn draw_chat_widget<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, a
 }
 
 fn draw_message_box<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
-    f.render_widget(Block::default().borders(Borders::ALL).title("Message"), area);
+    let input = Paragraph::new(app.message_input.input.as_str())
+        .style(match app.mode {
+            Mode::Message => Style::default().fg(Color::Yellow),
+            _ => Style::default(),
+        })
+        .block(Block::default().borders(Borders::ALL).title("Message"));
+    f.render_widget(input, area);
+    if app.mode == Mode::Message {
+        f.set_cursor(
+            area.x + app.message_input.cursor_position as u16 + 1,
+            area.y + 1,
+        )
+    }
 }
 
 

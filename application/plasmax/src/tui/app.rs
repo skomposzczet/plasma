@@ -62,6 +62,65 @@ impl<T> StatefulList<T> {
     }
 }
 
+pub struct UserInput {
+    pub cursor_position: usize,
+    pub input: String,
+}
+
+impl UserInput {
+    pub fn new() -> Self {
+        UserInput {
+            cursor_position: 0,
+            input: String::new(),
+        }
+    }
+    
+    pub fn submit(&mut self) -> String {
+        let tmp = self.input.clone();
+        self.input.clear();
+        self.reset_cursor();
+        tmp
+    }
+
+    fn move_cursor_left(&mut self) {
+        let cursor_moved_left = self.cursor_position.saturating_sub(1);
+        self.cursor_position = self.clamp_cursor(cursor_moved_left);
+    }
+
+    fn move_cursor_right(&mut self) {
+        let cursor_moved_right = self.cursor_position.saturating_add(1);
+        self.cursor_position = self.clamp_cursor(cursor_moved_right);
+    }
+
+    fn enter_char(&mut self, new_char: char) {
+        self.input.insert(self.cursor_position, new_char);
+        self.move_cursor_right();
+    }
+
+    fn delete_char(&mut self) {
+        let is_not_cursor_leftmost = self.cursor_position != 0;
+        if is_not_cursor_leftmost {
+
+            let current_index = self.cursor_position;
+            let from_left_to_current_index = current_index - 1;
+
+            let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
+            let after_char_to_delete = self.input.chars().skip(current_index);
+
+            self.input = before_char_to_delete.chain(after_char_to_delete).collect();
+            self.move_cursor_left();
+        }
+    }
+
+    fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
+        new_cursor_pos.clamp(0, self.input.len())
+    }
+
+    fn reset_cursor(&mut self) {
+        self.cursor_position = 0;
+    }
+}
+
 #[derive(PartialEq)]
 pub enum Mode {
     Normal,
@@ -73,6 +132,8 @@ pub enum Mode {
 pub struct App {
     pub mode: Mode,
     pub items: StatefulList<Chat>,
+    pub new_chat_input: UserInput,
+    pub message_input: UserInput,
 }
 
 impl App {
@@ -80,6 +141,8 @@ impl App {
         App {
             mode: Mode::Normal,
             items: StatefulList::with_items(chats),
+            new_chat_input: UserInput::new(),
+            message_input: UserInput::new(),
         }
     }
 
@@ -87,8 +150,7 @@ impl App {
         match self.mode {
             Mode::Normal => self.handle_evt_normal(key),
             Mode::BrowseChats => self.handle_evt_browse_chats(key),
-            Mode::NewChat => self.handle_evt_new_chat(key),
-            Mode::Message => self.handle_evt_message(key),
+            Mode::NewChat | Mode::Message => self.handle_evt_input(key),
         }
     }
 
@@ -113,11 +175,35 @@ impl App {
         return true;
     }
 
-    fn handle_evt_new_chat(&mut self, key: KeyCode) -> bool {
-        todo!();
-    }
+    fn handle_evt_input(&mut self, key: KeyCode) -> bool {
+        let input = match self.mode {
+            Mode::NewChat => &mut self.new_chat_input,
+            Mode::Message => &mut self.message_input,
+            _ => {
+                return false;
+            }
+        };
 
-    fn handle_evt_message(&mut self, key: KeyCode) -> bool {
-        todo!();
+        match key {
+            KeyCode::Enter => {
+                input.submit();
+            },
+            KeyCode::Char(to_insert) => {
+                input.enter_char(to_insert);
+            }
+            KeyCode::Backspace => {
+                input.delete_char();
+            }
+            KeyCode::Left => {
+                input.move_cursor_left();
+            }
+            KeyCode::Right => {
+                input.move_cursor_right();
+            }
+            _ => {
+                return false;
+            }
+        }
+        return true;
     }
 }
