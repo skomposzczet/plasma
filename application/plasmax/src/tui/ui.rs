@@ -7,6 +7,7 @@ pub fn ui<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut App) {
 
     for (i, area) in chunks.into_iter().enumerate() {
         match i {
+            0 => print_small_help(f, app, area),
             1 => draw_chat_widget(f, app, area),
             2 => draw_message_box(f, app, area),
             4 => draw_chats_widget(f, app, area),
@@ -82,6 +83,12 @@ fn draw_new_chat_input<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App
             area.y + 1,
         )
     }
+}
+
+fn print_small_help<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
+    let text = app.get_small_help();
+    let help_message = Paragraph::new(text);
+    f.render_widget(help_message, area);
 }
 
 fn draw_chat_widget<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, area: Rect) {

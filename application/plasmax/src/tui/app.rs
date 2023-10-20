@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crossterm::event::KeyCode;
 use ratatui::widgets::ListState;
 
@@ -129,6 +131,16 @@ pub enum Mode {
     Message,
 }
 
+impl Display for Mode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Mode::Normal => write!(f, "Normal"),
+            Mode::BrowseChats => write!(f, "Browse"),
+            Mode::NewChat | Mode::Message => write!(f, "Input"),
+        }
+    }
+}
+
 pub struct App {
     pub mode: Mode,
     pub items: StatefulList<Chat>,
@@ -144,6 +156,10 @@ impl App {
             new_chat_input: UserInput::new(),
             message_input: UserInput::new(),
         }
+    }
+
+    pub fn get_small_help(&self) -> String {
+        format!("Mode: {}", self.mode)
     }
 
     pub fn handle_evt(&mut self, key: KeyCode) -> bool {
@@ -166,12 +182,12 @@ impl App {
     }
 
     fn handle_evt_normal(&mut self, key: KeyCode) -> bool {
-        match key {
-            KeyCode::Char('b') => self.mode = Mode::BrowseChats,
-            KeyCode::Char('n') => self.mode = Mode::NewChat,
-            KeyCode::Char('m') => self.mode = Mode::Message,
+        self.mode = match key {
+            KeyCode::Char('b') => Mode::BrowseChats,
+            KeyCode::Char('n') => Mode::NewChat,
+            KeyCode::Char('m') => Mode::Message,
             _ => return false,
-        }
+        };
         return true;
     }
 
