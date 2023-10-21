@@ -3,7 +3,7 @@ use std::fmt::Display;
 use crossterm::event::KeyCode;
 use ratatui::widgets::ListState;
 
-use crate::chats::Chat;
+use crate::{chats::Chat, api::Api, account::{Account, Authorized}, error::PlasmaError};
 
 pub struct StatefulList<T> {
     pub state: ListState,
@@ -142,6 +142,8 @@ impl Display for Mode {
 }
 
 pub struct App {
+    pub api: Api,
+    pub account: Account<Authorized>,
     pub mode: Mode,
     pub items: StatefulList<Chat>,
     pub new_chat_input: UserInput,
@@ -149,24 +151,28 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(chats: Vec<Chat>) -> App {
-        App {
+    pub async fn new(api: Api, account: Account<Authorized>) -> Result<App, PlasmaError> {
+        let chats = account.chats(&api).await?.chats;
+        let app = App {
+            api,
+            account,
             mode: Mode::Normal,
             items: StatefulList::with_items(chats),
             new_chat_input: UserInput::new(),
             message_input: UserInput::new(),
-        }
+        };
+        Ok(app)
     }
 
     pub fn get_small_help(&self) -> String {
         format!("Mode: {}", self.mode)
     }
 
-    pub fn handle_evt(&mut self, key: KeyCode) -> bool {
+    pub async fn handle_evt(&mut self, key: KeyCode) -> bool {
         match self.mode {
             Mode::Normal => self.handle_evt_normal(key),
             Mode::BrowseChats => self.handle_evt_browse_chats(key),
-            Mode::NewChat | Mode::Message => self.handle_evt_input(key),
+            Mode::NewChat | Mode::Message => self.handle_evt_input(key).await,
         }
     }
 
@@ -191,7 +197,7 @@ impl App {
         return true;
     }
 
-    fn handle_evt_input(&mut self, key: KeyCode) -> bool {
+    async fn handle_evt_input(&mut self, key: KeyCode) -> bool {
         let input = match self.mode {
             Mode::NewChat => &mut self.new_chat_input,
             Mode::Message => &mut self.message_input,
@@ -202,7 +208,7 @@ impl App {
 
         match key {
             KeyCode::Enter => {
-                input.submit();
+                self.submit().await;
             },
             KeyCode::Char(to_insert) => {
                 input.enter_char(to_insert);
@@ -221,5 +227,23 @@ impl App {
             }
         }
         return true;
+    }
+
+    async fn submit(&mut self) {
+        match self.mode {
+            Mode::NewChat => {
+                let username = self.new_chat_input.submit();
+                match self.account.chat(&self.api, &username).await {
+                    Ok(_) => {
+                        let chats = self.account.chats(&self.api).await.unwrap().chats;
+                        self.items = StatefulList::with_items(chats);
+                    },
+                    Err(_) => {
+                        todo!();
+                    }
+                }
+            },
+            _ => {},
+        }
     }
 }

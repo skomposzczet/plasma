@@ -81,13 +81,10 @@ async fn main() -> Result<(), PlasmaError> {
     let api = Api::new();
     let cli = Cli::parse();
 
-    let acc = cli_get_accout(cli, &api).await?;
-    if acc.is_none() {
-        return Ok(());
-    }
-    let acc = acc.unwrap();
-    let chats = acc.chats(&api).await?;
-    println!("{:?}", chats);
+    let acc = match cli_get_accout(cli, &api).await? {
+        Some(a) => a,
+        None => return Ok(()),
+    };
 
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -96,8 +93,8 @@ async fn main() -> Result<(), PlasmaError> {
     let mut terminal = Terminal::new(backend)?;
 
     let tick_rate = Duration::from_millis(1000);
-    let app = App::new(chats.chats.clone());
-    let res = run_app(&mut terminal, app, tick_rate);
+    let app = App::new(api, acc).await?;
+    let res = run_app(&mut terminal, app, tick_rate).await;
 
     disable_raw_mode()?;
     execute!(
@@ -114,7 +111,7 @@ async fn main() -> Result<(), PlasmaError> {
     Ok(())
 }
 
-fn run_app<B: Backend>(
+async fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
     mut app: App,
     tick_rate: Duration,
@@ -137,7 +134,7 @@ fn run_app<B: Backend>(
                         },
                         KeyCode::Esc => app.mode = Mode::Normal,
                         _ => {
-                            app.handle_evt(key.code);
+                            app.handle_evt(key.code).await;
                         },
                     }
                 }
