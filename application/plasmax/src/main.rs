@@ -126,12 +126,10 @@ async fn run_app<B: Backend>(
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
+                    if key.code == KeyCode::Char('q') && app.mode == Mode::Normal {
+                        return Ok(());
+                    }
                     match key.code {
-                        KeyCode::Char('q') => {
-                            if app.mode == Mode::Normal {
-                                return Ok(());
-                            }
-                        },
                         KeyCode::Esc => app.mode = Mode::Normal,
                         _ => {
                             app.handle_evt(key.code).await;
