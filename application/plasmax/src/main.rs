@@ -5,10 +5,11 @@ mod api;
 mod chats;
 mod tui;
 
+use crate::tui::tools::Mode;
 use account::Authorized;
 use api::Api;
 use ratatui::Terminal;
-use tui::app::{App, Mode};
+use tui::app::App;
 use clap::{Parser, Subcommand};
 use error::PlasmaError;
 use std::io::Write;

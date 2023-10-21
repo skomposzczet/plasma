@@ -1,6 +1,6 @@
 use ratatui::{prelude::*, widgets::*};
 use itertools::Itertools;
-use super::app::{App, Mode};
+use super::{app::App, tools::Mode};
 
 pub fn ui<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut App) {
     let chunks = create_layout(f.size());
