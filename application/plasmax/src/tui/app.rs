@@ -1,6 +1,6 @@
 use crossterm::event::KeyCode;
 use crate::{api::Api, account::{Account, Authorized}, error::PlasmaError, chats::Chat};
-use super::tools::{Mode, StatefulList, UserInput};
+use super::tools::{Mode, StatefulList, UserInput, MessagesBuffer};
 
 pub struct App {
     pub api: Api,
@@ -9,11 +9,13 @@ pub struct App {
     pub items: StatefulList<Chat>,
     pub new_chat_input: UserInput,
     pub message_input: UserInput,
+    pub messages_buffer: MessagesBuffer,
 }
 
 impl App {
     pub async fn new(api: Api, account: Account<Authorized>) -> Result<App, PlasmaError> {
         let chats = account.chats(&api).await?.chats;
+        let un = account.username().clone();
         let app = App {
             api,
             account,
@@ -21,6 +23,7 @@ impl App {
             items: StatefulList::with_items(chats),
             new_chat_input: UserInput::new(),
             message_input: UserInput::new(),
+            messages_buffer: MessagesBuffer::new(un),
         };
         Ok(app)
     }
@@ -103,6 +106,13 @@ impl App {
                         todo!();
                     }
                 }
+            },
+            Mode::Message => {
+                let message = self.message_input.submit();
+                if message.is_empty() {
+                    return;
+                }
+                self.messages_buffer.push(self.account.username(), &message);
             },
             _ => {},
         }

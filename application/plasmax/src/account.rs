@@ -81,6 +81,10 @@ impl Account<Authorized> {
         self.token.as_ref().unwrap()
     }
 
+    pub fn username(&self) -> &String {
+        self.username.as_ref().unwrap()
+    }
+
     pub async fn chats(&self, api: &Api) -> Result<Chats, PlasmaError> {
         let chats = api.chats(self.token()).await?;
         let params = FindBody::username(self.username.clone().unwrap());

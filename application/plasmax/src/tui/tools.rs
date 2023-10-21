@@ -1,6 +1,5 @@
 use std::fmt::Display;
-use ratatui::widgets::ListState;
-use crate::{chats::Chat, api::Api, account::{Account, Authorized}};
+use ratatui::{widgets::ListState, text::{Span, Line, Text}, style::{Color, Style, Modifier}};
 
 pub struct StatefulList<T> {
     pub state: ListState,
@@ -138,3 +137,52 @@ impl Display for Mode {
     }
 }
 
+struct Message {
+    username: String,
+    content: String,
+}
+
+pub struct MessagesBuffer {
+    me: String,
+    messages: Vec<Message>,
+}
+
+impl MessagesBuffer {
+    pub fn new(me: String) -> Self {
+        MessagesBuffer {
+            me,
+            messages: Vec::new(),
+        }
+    }
+
+    pub fn push(&mut self, username: &str, message: &str) {
+        let m = Message {
+            username: String::from(username),
+            content: String::from(message),
+        };
+        self.messages.push(m);
+    }
+
+    pub fn text(&self) -> Text {
+        let lines: Vec<Line> = self.messages
+            .iter()
+            .map(|m| {
+                self.to_line(m)
+            })
+            .collect();
+        Text::from(lines)
+    }
+
+    fn to_line(&self, message: &Message) -> Line {
+        let color = if self.me == message.username { Color::Green } else { Color::Red };
+        let span = Span::styled(
+            format!("@{}:", message.username),
+            Style::new()
+            .fg(color)
+            .add_modifier(Modifier::BOLD),
+        );
+        let span2 = Span::raw(message.content.clone());
+        let line = Line::from(vec![span, span2]);
+        line
+    }
+}

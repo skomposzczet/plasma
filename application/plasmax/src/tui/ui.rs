@@ -92,7 +92,14 @@ fn print_small_help<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, a
 }
 
 fn draw_chat_widget<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
-    f.render_widget(Block::default().borders(Borders::ALL).title(""), area);
+    let text = app.messages_buffer.text();
+    let paragraph = Paragraph::new(text)
+        .block(
+            Block::new()
+            .title("Chat with other")
+            .borders(Borders::ALL)
+        );
+    f.render_widget(paragraph, area);
 }
 
 fn draw_message_box<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
