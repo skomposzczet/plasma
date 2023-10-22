@@ -91,15 +91,24 @@ fn print_small_help<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, a
     f.render_widget(help_message, area);
 }
 
-fn draw_chat_widget<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
+fn draw_chat_widget<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let text = app.messages_buffer.text();
+    let scroll = app.calculate_scroll(area.height, text.height() as u16);
+
     let paragraph = Paragraph::new(text)
         .block(
             Block::new()
             .title("Chat with other")
             .borders(Borders::ALL)
-        );
+        )
+        .scroll((scroll, 0));
     f.render_widget(paragraph, area);
+
+    if scroll == 0 {
+        app.messages_buffer.scroll_block();
+    } else {
+        app.messages_buffer.scroll_unblock();
+    }
 }
 
 fn draw_message_box<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, area: Rect) {

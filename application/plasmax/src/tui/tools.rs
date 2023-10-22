@@ -125,6 +125,7 @@ pub enum Mode {
     BrowseChats,
     NewChat,
     Message,
+    ChatScroll,
 }
 
 impl Display for Mode {
@@ -133,6 +134,7 @@ impl Display for Mode {
             Mode::Normal => write!(f, "Normal"),
             Mode::BrowseChats => write!(f, "Browse"),
             Mode::NewChat | Mode::Message => write!(f, "Input"),
+            Mode::ChatScroll => write!(f, "Scroll"),
         }
     }
 }
@@ -145,6 +147,8 @@ struct Message {
 pub struct MessagesBuffer {
     me: String,
     messages: Vec<Message>,
+    scroll_offset: u16,
+    scroll_up_block: bool,
 }
 
 impl MessagesBuffer {
@@ -152,6 +156,8 @@ impl MessagesBuffer {
         MessagesBuffer {
             me,
             messages: Vec::new(),
+            scroll_offset: 0,
+            scroll_up_block: false,
         }
     }
 
@@ -184,5 +190,32 @@ impl MessagesBuffer {
         let span2 = Span::raw(message.content.clone());
         let line = Line::from(vec![span, span2]);
         line
+    }
+
+    pub fn scroll_get(&self) -> u16 {
+        self.scroll_offset
+    }
+
+    pub fn scroll_up(&mut self) {
+        if self.scroll_up_block {
+            return;
+        }
+        self.scroll_offset = self.scroll_offset.saturating_add(1);
+    }
+
+    pub fn scroll_down(&mut self) {
+        self.scroll_offset = self.scroll_offset.saturating_sub(1);
+    }
+
+    pub fn scroll_block(&mut self) {
+        self.scroll_up_block = true;
+    }
+    
+    pub fn scroll_unblock(&mut self) {
+        self.scroll_up_block = false;
+    }
+
+    pub fn scroll_reset(&mut self) {
+        self.scroll_offset = 0;
     }
 }

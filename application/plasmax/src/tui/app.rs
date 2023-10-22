@@ -28,6 +28,12 @@ impl App {
         Ok(app)
     }
 
+    pub fn calculate_scroll(&self, area_height: u16, text_height: u16) -> u16 {
+        let scroll = if text_height < area_height - 2 { 0 } else { text_height + 2 - area_height };
+        let scroll = scroll.saturating_sub(self.messages_buffer.scroll_get());
+        scroll
+    }
+
     pub fn get_small_help(&self) -> String {
         format!("Mode: {}", self.mode)
     }
@@ -37,6 +43,7 @@ impl App {
             Mode::Normal => self.handle_evt_normal(key),
             Mode::BrowseChats => self.handle_evt_browse_chats(key),
             Mode::NewChat | Mode::Message => self.handle_evt_input(key).await,
+            Mode::ChatScroll => self.handle_evt_scroll(key),
         }
     }
 
@@ -56,6 +63,7 @@ impl App {
             KeyCode::Char('b') => Mode::BrowseChats,
             KeyCode::Char('n') => Mode::NewChat,
             KeyCode::Char('m') => Mode::Message,
+            KeyCode::Char('s') => Mode::ChatScroll,
             _ => return false,
         };
         return true;
@@ -116,5 +124,23 @@ impl App {
             },
             _ => {},
         }
+    }
+
+    fn handle_evt_scroll(&mut self, key: KeyCode) -> bool {
+        match key {
+            KeyCode::Char('j') | KeyCode::Down => {
+                self.messages_buffer.scroll_down();
+            }
+            KeyCode::Char('k') | KeyCode::Up =>  {
+                self.messages_buffer.scroll_up();
+            }
+            KeyCode::Char('q') => {
+                self.messages_buffer.scroll_reset();
+            }
+            _ => {
+                return false;
+            }
+        }
+        return true;
     }
 }
