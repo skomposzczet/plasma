@@ -58,10 +58,18 @@ fn draw_chats_widget<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut A
         .collect();
 
     let items = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Chats"))
+        .block(
+            Block::default()
+            .borders(Borders::ALL)
+            .title("Chats")
+            .border_style(match app.mode {
+                Mode::BrowseChats => Style::default().fg(Color::LightGreen),
+                _ => Style::default(),
+            })
+        )
         .highlight_style(
             Style::default()
-                .bg(Color::LightGreen)
+                .bg(Color::Magenta)
                 .add_modifier(Modifier::BOLD),
         )
         .highlight_symbol(">> ");
@@ -72,7 +80,7 @@ fn draw_chats_widget<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut A
 fn draw_new_chat_input<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let input = Paragraph::new(app.new_chat_input.input.as_str())
         .style(match app.mode {
-            Mode::NewChat => Style::default().fg(Color::Yellow),
+            Mode::NewChat => Style::default().fg(Color::LightGreen),
             _ => Style::default(),
         })
         .block(Block::default().borders(Borders::ALL).title("New chat"));
@@ -100,6 +108,10 @@ fn draw_chat_widget<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut Ap
             Block::new()
             .title("Chat with other")
             .borders(Borders::ALL)
+            .border_style(match app.mode {
+                Mode::ChatScroll => Style::default().fg(Color::LightGreen),
+                _ => Style::default(),
+            })
         )
         .scroll((scroll, 0));
     f.render_widget(paragraph, area);
@@ -114,7 +126,7 @@ fn draw_chat_widget<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut Ap
 fn draw_message_box<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, area: Rect) {
     let input = Paragraph::new(app.message_input.input.as_str())
         .style(match app.mode {
-            Mode::Message => Style::default().fg(Color::Yellow),
+            Mode::Message => Style::default().fg(Color::LightGreen),
             _ => Style::default(),
         })
         .block(Block::default().borders(Borders::ALL).title("Message"));
