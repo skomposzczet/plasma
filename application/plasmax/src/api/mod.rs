@@ -1,5 +1,6 @@
 pub mod body;
 pub mod response;
+pub mod ws;
 
 use bson::oid::ObjectId;
 use reqwest::Client;

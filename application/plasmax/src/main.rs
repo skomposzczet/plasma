@@ -117,7 +117,7 @@ async fn run_app<B: Backend>(
     mut app: App,
     tick_rate: Duration,
 ) -> io::Result<()> {
-    let last_tick = Instant::now();
+    let mut last_tick = Instant::now();
     loop {
         terminal.draw(|f| tui::ui::ui(f, &mut app))?;
 
@@ -138,6 +138,10 @@ async fn run_app<B: Backend>(
                     }
                 }
             }
+        }
+        if last_tick.elapsed() >= tick_rate {
+            app.on_tick().await;
+            last_tick = Instant::now();
         }
     }
 }

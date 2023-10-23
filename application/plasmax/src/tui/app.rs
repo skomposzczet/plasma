@@ -1,5 +1,5 @@
 use crossterm::event::KeyCode;
-use crate::{api::Api, account::{Account, Authorized}, error::PlasmaError, chats::Chat};
+use crate::{api::{Api, ws::{ThreadComm, Ws}}, account::{Account, Authorized}, error::PlasmaError, chats::Chat};
 use super::tools::{Mode, StatefulList, UserInput, MessagesBuffer};
 
 pub struct App {
@@ -10,12 +10,15 @@ pub struct App {
     pub new_chat_input: UserInput,
     pub message_input: UserInput,
     pub messages_buffer: MessagesBuffer,
+    pub comms: ThreadComm<String>,
 }
 
 impl App {
     pub async fn new(api: Api, account: Account<Authorized>) -> Result<App, PlasmaError> {
         let chats = account.chats(&api).await?.chats;
         let un = account.username().clone();
+        let ws = Ws::new("ws://localhost:8000/chat", account.token());
+        let comms = ws.run().await;
         let app = App {
             api,
             account,
@@ -24,8 +27,17 @@ impl App {
             new_chat_input: UserInput::new(),
             message_input: UserInput::new(),
             messages_buffer: MessagesBuffer::new(un),
+            comms,
         };
         Ok(app)
+    }
+
+    pub async fn on_tick(&mut self) {
+        let message = match self.comms.receiver.try_recv() {
+            Ok(mess) => mess,
+            Err(_) => return,
+        };
+        self.messages_buffer.push("other", &message);
     }
 
     pub fn calculate_scroll(&self, area_height: u16, text_height: u16) -> u16 {
@@ -121,6 +133,7 @@ impl App {
                     return;
                 }
                 self.messages_buffer.push(self.account.username(), &message);
+                self.comms.sender.send(message).await.unwrap();
             },
             _ => {},
         }

@@ -18,3 +18,9 @@ bson = { version = "2", features = ["chrono-0_4"] }
 crossterm = { version = "0.27" }
 ratatui = "0.23.0"
 itertools = "0.11.0"
+http = "0.2.9"
+rand = "0.8.5"
+data-encoding = "2.4.0"
+futures-channel = "0.3.28"
+tokio-tungstenite = { version="0.20.1", features=["handshake"]}
+futures-util = { version = "0.3.28", default-features = false, features = ["sink", "std"] }
