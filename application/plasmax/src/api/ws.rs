@@ -1,7 +1,15 @@
 use http::Uri;
 use futures_util::{future, pin_mut, StreamExt};
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{Sender, Receiver, self};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+
+#[derive(Serialize, Deserialize)]
+pub struct WsMessage {
+    pub chat_id: String,
+    pub sender_id: String,
+    pub content: String,
+}
 
 pub struct ThreadComm<T> {
     pub sender: Sender<T>,
@@ -26,9 +34,9 @@ impl Ws {
         }
     }
 
-    pub async fn run(&self) -> ThreadComm<String> {
-        let (tx, rx) = mpsc::channel::<String>(1000);
-        let (tx2, rx2) = mpsc::channel::<String>(1000);
+    pub async fn run(&self) -> ThreadComm<WsMessage> {
+        let (tx, rx) = mpsc::channel::<WsMessage>(1000);
+        let (tx2, rx2) = mpsc::channel::<WsMessage>(1000);
 
         let req = self.make_request().unwrap();
         tokio::spawn(async {Self::run_impl(req, tx2, rx)}.await);
@@ -39,15 +47,15 @@ impl Ws {
         }
     }
 
-    async fn run_impl(req: http::Request<()>, sender: Sender<String>, mut receiver: Receiver<String>) {
+    async fn run_impl(req: http::Request<()>, sender: Sender<WsMessage>, mut receiver: Receiver<WsMessage>) {
         let (stdin_tx, stdin_rx) = futures_channel::mpsc::unbounded();
         tokio::spawn(async move {
             loop {
                 let n = match receiver.recv().await {
-                    Some(s) => s,
+                    Some(s) => bincode::serialize(&s).unwrap(),
                     None => break,
                 };
-                stdin_tx.unbounded_send(Message::text(n)).unwrap();
+                stdin_tx.unbounded_send(Message::binary(n)).unwrap();
             }
         });
 
@@ -59,7 +67,7 @@ impl Ws {
         let ws_to_stdout: _ = {
             read.for_each(|message| async {
                 let data = message.unwrap().into_data();
-                let data = String::from_utf8(data.clone()).unwrap();
+                let data: WsMessage = bincode::deserialize(&data).unwrap();
                 sender.send(data).await.expect("Sender disconnected");
             })
         };

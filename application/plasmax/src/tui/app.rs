@@ -1,5 +1,5 @@
 use crossterm::event::KeyCode;
-use crate::{api::{Api, ws::{ThreadComm, Ws}}, account::{Account, Authorized}, error::PlasmaError, chats::Chat};
+use crate::{api::{Api, ws::{ThreadComm, Ws, WsMessage}}, account::{Account, Authorized}, error::PlasmaError, chats::Chat};
 use super::tools::{Mode, StatefulList, UserInput, MessagesBuffer};
 
 pub struct App {
@@ -10,7 +10,7 @@ pub struct App {
     pub new_chat_input: UserInput,
     pub message_input: UserInput,
     pub messages_buffer: MessagesBuffer,
-    pub comms: ThreadComm<String>,
+    pub comms: ThreadComm<WsMessage>,
 }
 
 impl App {
@@ -37,7 +37,7 @@ impl App {
             Ok(mess) => mess,
             Err(_) => return,
         };
-        self.messages_buffer.push("other", &message);
+        self.messages_buffer.push("other", &message.content);
     }
 
     pub fn calculate_scroll(&self, area_height: u16, text_height: u16) -> u16 {
@@ -137,7 +137,16 @@ impl App {
                 if message.is_empty() {
                     return;
                 }
-                self.messages_buffer.push(self.account.username(), &message);
+                let current_chat = match self.items.get() {
+                    Some(chat) => chat,
+                    None => return,
+                };
+                let message = WsMessage {
+                    chat_id: current_chat.id.to_string(),
+                    sender_id: self.account.id().clone().to_string(),
+                    content: message,
+                };
+                self.messages_buffer.push(self.account.username(), &message.content);
                 self.comms.sender.send(message).await.unwrap();
             },
             _ => {},
