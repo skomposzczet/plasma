@@ -5,7 +5,7 @@ use bson::oid::ObjectId;
 use serde::{Serialize, Deserialize};
 use crate::model::{Db, db, Error};
 use crate::error;
-use super::{objectid_from_str, from_document, BsonError};
+use super::{objectid_from_str, from_document, BsonError, objectid_from_str_raw};
 use super::DATABASE;
 
 const COLLECTION: &'static str  = "chat";
@@ -32,6 +32,10 @@ impl Chat {
         &self.id
     }
 
+    pub fn members(&self) -> &Vec<ObjectId> {
+        &self.users
+    }
+
     pub async fn add_to_db(db: &Db, chat: &Chat) -> Result<ObjectId, Error> {
         let bs = bson::to_bson(&chat)
             .map_err(|err| BsonError::from(err))?;
@@ -45,6 +49,22 @@ impl Chat {
         let id = result.inserted_id.as_object_id().unwrap();
 
         Ok(id)
+    }
+
+    pub async fn get_by_id(db: &Db, id: &str) -> Result<Chat, Error> {
+        let id = objectid_from_str_raw(id)
+            .map_err(|_| Error::InvalidOID)?;
+        let filter = doc!{
+            "_id": id
+        };
+
+        let document = db::get_by(db, &filter, &String::from("chat"))
+            .await?
+            .ok_or(Error::DbError("find", id.to_string()))?;
+
+        let chat = from_document(document)?;
+        
+        Ok(chat)
     }
 
     pub async fn get_by_users(db: &Db, id1: &str, id2: &ObjectId) -> Result<Chat, Error> {
