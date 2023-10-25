@@ -6,7 +6,7 @@ use futures::{StreamExt, SinkExt, TryFutureExt};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use warp::{Filter, reject::Rejection, reply::Reply, ws::WebSocket};
-use crate::{model::{Db, chat::Chat}, server::with_auth, ClientsHandle};
+use crate::{model::{Db, chat::Chat, message::Message}, server::with_auth, ClientsHandle, error};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[derive(Serialize, Deserialize)]
@@ -77,6 +77,12 @@ async fn user_message(db: Arc<Db>, oid: &str, msg: warp::filters::ws::Message, c
     let ws_msg: WsMessage = bincode::deserialize(msg.as_bytes()).unwrap();
     let chat = Chat::get_by_id(&db, &ws_msg.chat_id).await.unwrap();
     let sender_id = ObjectId::from_str(&ws_msg.sender_id).unwrap();
+
+    let new_message = Message::new(chat.id().unwrap(), sender_id, ws_msg.content);
+    if let Err(e) = Message::add_to_db(&db, &new_message).await {
+        error!("Failed to send message: {}", e);
+        return;
+    }
 
     let members = chat.members()
         .iter()
