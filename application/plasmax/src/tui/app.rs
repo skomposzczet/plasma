@@ -53,26 +53,38 @@ impl App {
     pub async fn handle_evt(&mut self, key: KeyCode) -> bool {
         match self.mode {
             Mode::Normal => self.handle_evt_normal(key),
-            Mode::BrowseChats => self.handle_evt_browse_chats(key),
+            Mode::BrowseChats => self.handle_evt_browse_chats(key).await,
             Mode::NewChat | Mode::Message => self.handle_evt_input(key).await,
             Mode::ChatScroll => self.handle_evt_scroll(key),
         }
     }
 
-    fn handle_evt_browse_chats(&mut self, key: KeyCode) -> bool {
+    async fn handle_evt_browse_chats(&mut self, key: KeyCode) -> bool {
         match key {
             KeyCode::Left => self.items.unselect(),
             KeyCode::Down => self.items.next(),
             KeyCode::Up => self.items.previous(),
-            KeyCode::Right => {
-                let changed = self.items.select();
-                if changed {
-                    self.messages_buffer = MessagesBuffer::new(self.account.username().clone());
-                }
-            },
+            KeyCode::Right => self.init_message_buffer().await,
             _ => return false,
         }
         return true;
+    }
+
+    async fn init_message_buffer(&mut self) {
+        let changed = self.items.select();
+        if !changed {
+            return;
+        }
+        let chat_id = self.items.get().unwrap().id;
+        let oid = self.account.id();
+        self.messages_buffer = MessagesBuffer::new(self.account.username().clone());
+        for message in self.account.messages(&self.api, &chat_id).await.unwrap().iter() {
+            let username = match message.sender_id == *oid {
+                true => self.account.username().clone(),
+                false => self.items.get().unwrap().user.username.clone(),
+            };
+            self.messages_buffer.push(&username, &message.message);
+        }
     }
 
     fn handle_evt_normal(&mut self, key: KeyCode) -> bool {
