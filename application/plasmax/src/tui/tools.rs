@@ -18,7 +18,7 @@ impl<T> StatefulList<T> {
 
     pub fn select(&mut self) -> bool {
         let next = self.state.selected();
-        if let Some(next) = self.current {
+        if next == self.current {
             return false;
         }
         self.current = self.state.selected();
