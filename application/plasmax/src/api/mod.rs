@@ -147,4 +147,22 @@ impl Api {
 
         Ok(chat)
     }
+
+    pub async fn messages(&self, token: &str, chat_id: &ObjectId) -> Result<Vec<response::Message>, ApiError> {
+        let url = Self::api_path("messages");
+
+        let response = self.client
+            .post(url)
+            .json(chat_id)
+            .bearer_auth(token)
+            .send()
+            .await;
+
+        let messages = response?
+            .json::<response::OkResponse<response::MessagesResponse>>().await?
+            .data
+            .messages;
+
+        Ok(messages)
+    }
 }

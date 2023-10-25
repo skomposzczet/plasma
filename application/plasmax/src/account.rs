@@ -1,7 +1,7 @@
 use std::{fs::{self, File, create_dir_all}, io::{Error, ErrorKind, Write}, path::PathBuf, marker::PhantomData};
 use bson::oid::ObjectId;
 use home::home_dir;
-use crate::{api::{Api, body::FindBody}, chats::{Chats, get_non_user_id}};
+use crate::{api::{Api, body::FindBody, response::Message}, chats::{Chats, get_non_user_id}};
 use crate::error::PlasmaError;
 
 const BASE_PATH: &'static str = ".plasmax";
@@ -111,5 +111,10 @@ impl Account<Authorized> {
     pub async fn chat(&self, api: &Api, member: &str) -> Result<ObjectId, PlasmaError> {
         let chat = api.chat(self.token(), member).await?;
         Ok(chat)
+    }
+
+    pub async fn messages(&self, api: &Api, chat_id: &ObjectId) -> Result<Vec<Message> ,PlasmaError> {
+        let messages = api.messages(self.token(), chat_id).await?;
+        Ok(messages)
     }
 }

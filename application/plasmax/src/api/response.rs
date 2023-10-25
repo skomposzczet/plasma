@@ -49,3 +49,17 @@ pub struct ChatsResponse {
 pub struct ChatResponse {
     pub chatid: ObjectId,
 }
+
+#[derive(Deserialize)]
+pub struct Message {
+    #[serde(rename = "_id")]
+    pub id: Option<ObjectId>,
+    pub chat_id: ObjectId,
+    pub sender_id: ObjectId,
+    pub message: String,
+}
+
+#[derive(Deserialize)]
+pub struct MessagesResponse {
+    pub messages: Vec<Message>,
+}
