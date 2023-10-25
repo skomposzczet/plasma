@@ -13,6 +13,7 @@ pub struct NotAuthorized;
 pub struct Account<State = NotAuthorized> {
     mail: String,
     username: Option<String>,
+    id: Option<ObjectId>,
     token: Option<String>,
     state: PhantomData<State>,
 }
@@ -22,6 +23,7 @@ impl Account {
         Account {
             mail,
             username: None,
+            id: None,
             token: None,
             state: PhantomData,
         }
@@ -60,9 +62,12 @@ impl Account<NotAuthorized> {
     pub async fn try_login_token(self, api: &Api) -> Result<Account<Authorized>, PlasmaError> {
         let token = self.read_token()?;
         let username = api.dashboard(&token).await?;
+        let params = FindBody::username(username.clone());
+        let id = api.find(&token, params).await?.id;
         let account = Account {
             mail: self.mail.clone(),
             username: Some(username),
+            id: Some(id),
             token: Some(token),
             state: PhantomData,
         };
@@ -85,19 +90,20 @@ impl Account<Authorized> {
         self.username.as_ref().unwrap()
     }
 
+    pub fn id(&self) -> &ObjectId {
+        self.id.as_ref().unwrap()
+    }
+
     pub async fn chats(&self, api: &Api) -> Result<Chats, PlasmaError> {
         let chats = api.chats(self.token()).await?;
-        let params = FindBody::username(self.username.clone().unwrap());
-        let ownid = api.find(self.token(), params).await?.id;
-
         let mut usernames: Vec<String> = Vec::new();
         for chat in chats.iter() {
-            let id = get_non_user_id(&chat.users, &ownid);
-            let p = FindBody::id(id.unwrap());
-            let un = api.find(self.token(), p).await.unwrap().username;
+            let id = get_non_user_id(&chat.users, self.id());
+            let params = FindBody::id(id.unwrap());
+            let un = api.find(self.token(), params).await.unwrap().username;
             usernames.push(un);
         }
-        let chats = Chats::new(chats, usernames, ownid);
+        let chats = Chats::new(chats, usernames, self.id());
 
         Ok(chats)
     }

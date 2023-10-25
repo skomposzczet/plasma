@@ -29,13 +29,13 @@ pub fn get_non_user_id(users: &Vec<ObjectId>, userid: &ObjectId) -> Option<Objec
 }
 
 impl Chats {
-    pub fn new(chats: Vec<response::Chat>, usernames: Vec<String>, userid: ObjectId) -> Self {
+    pub fn new(chats: Vec<response::Chat>, usernames: Vec<String>, userid: &ObjectId) -> Self {
         let cs = zip(chats, usernames)
             .map(|c| {
                 Chat {
                     id: c.0.id.clone(),
                     user: UserHandle {
-                        id: get_non_user_id(&c.0.users, &userid).unwrap(),
+                        id: get_non_user_id(&c.0.users, userid).unwrap(),
                         username: c.1.clone(),
                     }
                 }
