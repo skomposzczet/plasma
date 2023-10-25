@@ -16,15 +16,20 @@ impl<T> StatefulList<T> {
         }
     }
 
-    pub fn show(&mut self) {
-        self.current = match self.current {
-            Some(_) => None,
-            None => self.state.selected(),
+    pub fn select(&mut self) -> bool {
+        let next = self.state.selected();
+        if let Some(next) = self.current {
+            return false;
         }
+        self.current = self.state.selected();
+        return true;
     }
 
-    pub fn get(&self) -> Option<usize> {
-        self.current
+    pub fn get(&self) -> Option<&T> {
+        match self.current {
+            None => None,
+            Some(idx) => Some(&self.items[idx]),
+        }
     }
 
     pub fn next(&mut self) {

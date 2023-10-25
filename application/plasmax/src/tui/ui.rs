@@ -15,8 +15,6 @@ pub fn ui<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut App) {
             _ => {},
         }
     }
-
-    draw_popup(f, app);
 }
 
 fn create_layout(area: Rect) -> Vec<Rect> {
@@ -102,11 +100,15 @@ fn print_small_help<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, a
 fn draw_chat_widget<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut App, area: Rect) {
     let text = app.messages_buffer.text();
     let scroll = app.calculate_scroll(area.height, text.height() as u16);
+    let title = match app.items.get() {
+        None => String::from(""),
+        Some(chat) => format!("Chat with {}", chat.user.username),
+    };
 
     let paragraph = Paragraph::new(text)
         .block(
             Block::new()
-            .title("Chat with other")
+            .title(title)
             .borders(Borders::ALL)
             .border_style(match app.mode {
                 Mode::ChatScroll => Style::default().fg(Color::LightGreen),
@@ -137,37 +139,4 @@ fn draw_message_box<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, a
             area.y + 1,
         )
     }
-}
-
-
-fn draw_popup<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App) {
-    match app.items.get() {
-        Some(cur) => {
-            let block = Block::default().title(format!("Current: {}", cur)).borders(Borders::ALL);
-            let area = centered_rect(40, 10, f.size());
-            f.render_widget(Clear, area);
-            f.render_widget(block, area);
-        },
-        None => {},
-    }
-}
-
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
-        .split(r);
-
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(popup_layout[1])[1]
 }

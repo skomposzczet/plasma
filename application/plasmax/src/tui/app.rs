@@ -64,7 +64,12 @@ impl App {
             KeyCode::Left => self.items.unselect(),
             KeyCode::Down => self.items.next(),
             KeyCode::Up => self.items.previous(),
-            KeyCode::Right => self.items.show(),
+            KeyCode::Right => {
+                let changed = self.items.select();
+                if changed {
+                    self.messages_buffer = MessagesBuffer::new(self.account.username().clone());
+                }
+            },
             _ => return false,
         }
         return true;
