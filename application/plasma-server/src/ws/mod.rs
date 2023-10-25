@@ -1,11 +1,20 @@
 pub mod clients;
 
-use std::sync::Arc;
+use std::{sync::Arc, str::FromStr};
+use bson::oid::ObjectId;
 use futures::{StreamExt, SinkExt, TryFutureExt};
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use warp::{Filter, reject::Rejection, reply::Reply, ws::WebSocket};
-use crate::{model::Db, server::with_auth, ClientsHandle};
+use crate::{model::{Db, chat::Chat}, server::with_auth, ClientsHandle};
 use tokio_stream::wrappers::UnboundedReceiverStream;
+
+#[derive(Serialize, Deserialize)]
+struct WsMessage {
+    chat_id: String,
+    sender_id: String,
+    content: String,
+}
 
 pub fn ws_paths(db: Arc<Db>, clients: ClientsHandle) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let with_db = warp::any()
@@ -28,16 +37,8 @@ async fn handle(ws: warp::ws::Ws, db: Arc<Db>, clients: ClientsHandle, oid: Stri
     Ok(ws.on_upgrade(move |socket| user_connected(socket, db.clone(), clients.clone(), oid)))
 }
 
-async fn user_connected(mut socket: WebSocket, db: Arc<Db>, clients: ClientsHandle, oid: String) {
+async fn user_connected(socket: WebSocket, db: Arc<Db>, clients: ClientsHandle, oid: String) {
     debug!("User connected: {}", oid);
-
-    for i in 0..5 {
-        if socket.send(warp::filters::ws::Message::text(format!("hello {}", i))).await.is_err() {
-            error!(":< dc {}", oid);
-            return;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
-    }
 
     let (mut user_ws_tx, mut user_ws_rx) = socket.split();
     let (tx, rx) = mpsc::unbounded_channel();
@@ -64,36 +65,42 @@ async fn user_connected(mut socket: WebSocket, db: Arc<Db>, clients: ClientsHand
                 break;
             },
         };
-        user_message(&oid, msg, clients.clone()).await;
+        user_message(db.clone(), &oid, msg, clients.clone()).await;
     }
     disconnect_user(&oid, clients.clone()).await;
 }
 
-async fn user_message(oid: &str, msg: warp::filters::ws::Message, clients: ClientsHandle) {
-    let msg = if let Ok(s) = msg.to_str() {
-        s
-    } else {
-        error!("non text msg");
+async fn user_message(db: Arc<Db>, oid: &str, msg: warp::filters::ws::Message, clients: ClientsHandle) {
+    if msg.as_bytes().is_empty() {
         return;
-    };
-    let msg = format!("<{}>: {}", oid, msg);
+    }
+    let ws_msg: WsMessage = bincode::deserialize(msg.as_bytes()).unwrap();
+    let chat = Chat::get_by_id(&db, &ws_msg.chat_id).await.unwrap();
+    let sender_id = ObjectId::from_str(&ws_msg.sender_id).unwrap();
 
-    match clients.write().await.get_client(oid) {
-        None => {
-            error!("no client for {}", oid);
-            return
-        },
-        Some(client) => {
-            let res = client.send(warp::filters::ws::Message::text(msg));
-            if res.is_err() {
-                error!("User disconnected {}", oid);
-                return;
+    let members = chat.members()
+        .iter()
+        .filter(|&m| *m != sender_id);
+
+    for member in members {
+        let member_id_str = format!("ObjectId(\"{}\")", member.to_string());
+        match clients.write().await.get_client(&member_id_str) {
+            None => {
+                info!("No client for {}", member);
+                return
+            },
+            Some(client) => {
+                let res = client.send(msg.clone());
+                if res.is_err() {
+                    error!("User disconnected {}", oid);
+                    return;
+                }
             }
         }
     }
 }
 
 async fn disconnect_user(oid: &str, clients: ClientsHandle) {
-    debug!("User disconnected: {}", oid);
+    info!("User disconnected: {}", oid);
     clients.write().await.remove_client(oid);
 }
