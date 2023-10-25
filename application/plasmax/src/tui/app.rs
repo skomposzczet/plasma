@@ -22,7 +22,7 @@ impl App {
         let app = App {
             api,
             account,
-            mode: Mode::Normal,
+            mode: Mode::BrowseChats,
             items: StatefulList::with_items(chats),
             new_chat_input: UserInput::new(),
             message_input: UserInput::new(),
@@ -61,10 +61,10 @@ impl App {
 
     async fn handle_evt_browse_chats(&mut self, key: KeyCode) -> bool {
         match key {
-            KeyCode::Left => self.items.unselect(),
-            KeyCode::Down => self.items.next(),
-            KeyCode::Up => self.items.previous(),
-            KeyCode::Right => self.init_message_buffer().await,
+            KeyCode::Left | KeyCode::Char('h') => self.items.unselect(),
+            KeyCode::Down | KeyCode::Char('j')  => self.items.next(),
+            KeyCode::Up | KeyCode::Char('k')  => self.items.previous(),
+            KeyCode::Enter => self.init_message_buffer().await,
             _ => return false,
         }
         return true;
@@ -91,8 +91,13 @@ impl App {
         self.mode = match key {
             KeyCode::Char('b') => Mode::BrowseChats,
             KeyCode::Char('n') => Mode::NewChat,
-            KeyCode::Char('m') => Mode::Message,
             KeyCode::Char('s') => Mode::ChatScroll,
+            KeyCode::Char('m') => {
+                match self.items.get() {
+                    Some(_) => Mode::Message,
+                    None => Mode::Normal,
+                }
+            }
             _ => return false,
         };
         return true;

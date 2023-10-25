@@ -10,7 +10,7 @@ pub struct StatefulList<T> {
 impl<T> StatefulList<T> {
     pub fn with_items(items: Vec<T>) -> StatefulList<T> {
         StatefulList {
-            state: ListState::default(),
+            state: ListState::default().with_selected(Some(0)),
             items,
             current: None,
         }
