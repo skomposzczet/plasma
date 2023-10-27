@@ -12,3 +12,14 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=mongoadmin
       - MONGO_INITDB_ROOT_PASSWORD=secret
+
+  server:
+    image: 'plasma-server'
+    build: ./application/plasma-server
+    environment:
+      - RUST_LOG=info
+    ports:
+      - '8000:8000'
+    depends_on:
+      - mongo
+    
