@@ -1,5 +1,15 @@
+use rand::{CryptoRng, RngCore};
+
 struct Signature {
 
+}
+
+struct PublicKey {
+
+}
+
+trait Key {
+    fn key(&self) -> PublicKey;
 }
 
 struct IdentityKeyPublic {
@@ -26,20 +36,84 @@ struct SharedSecret {
 
 }
 
+struct X3dhSharedSecret {
+
+}
+
 struct IdentityKeyPair {
 
+}
+
+impl IdentityKeyPair {
+    fn generate<R: CryptoRng + RngCore>(rng: &mut R) -> Self {
+        todo!();
+    }
+
+    fn public(&self) -> IdentityKeyPublic {
+        todo!();
+    }
+
+    fn sign(&self, msg: &[u8]) -> Signature {
+        todo!();
+    }
+
+    fn diffie_hellman<K: Key>(&self, key: &K) -> SharedSecret {
+        todo!();
+    }
 }
 
 struct EphemeralKeyPair {
 
 }
 
+impl EphemeralKeyPair {
+    fn generate<R: CryptoRng + RngCore>(rng: &mut R) -> Self {
+        todo!();
+    }
+
+    fn public(&self) -> IdentityKeyPublic {
+        todo!();
+    }
+
+    fn diffie_hellman<K: Key>(self, key: &K) -> SharedSecret {
+        todo!();
+    }
+}
+
 struct SignedPreKeyPair {
 
 }
 
+impl SignedPreKeyPair {
+    fn generate<R: CryptoRng + RngCore>(rng: &mut R) -> Self {
+        todo!();
+    }
+
+    fn public(&self) -> IdentityKeyPublic {
+        todo!();
+    }
+
+    fn diffie_hellman<K: Key>(&self, key: &K) -> SharedSecret {
+        todo!();
+    }
+}
+
 struct OneTimeKeyPair {
 
+}
+
+impl OneTimeKeyPair {
+    fn generate<R: CryptoRng + RngCore>(rng: &mut R) -> Self {
+        todo!();
+    }
+
+    fn public(&self) -> IdentityKeyPublic {
+        todo!();
+    }
+
+    fn diffie_hellman<K: Key>(&self, key: &K) -> SharedSecret {
+        todo!();
+    }
 }
 
 struct PeerBundle {
@@ -61,7 +135,7 @@ fn x3dh_sig(
     ephemeral_me: &EphemeralKeyPair,
     identity_you: &IdentityKeyPublic,
     one_time_pre_you: &OneTimePreKeyPublic 
-) -> SharedSecret {
+) -> X3dhSharedSecret {
     todo!();
 }
 
@@ -71,6 +145,6 @@ fn x3dh(
     ephemeral_you: &EphemeralKeyPublic,
     identity_me: &IdentityKeyPair,
     one_time_pre_me: &OneTimeKeyPair
-) -> SharedSecret {
+) -> X3dhSharedSecret {
     todo!();
 }
