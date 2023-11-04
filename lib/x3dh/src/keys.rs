@@ -1,3 +1,5 @@
+use p256::ecdsa::VerifyingKey;
+use p256::ecdsa::signature::Verifier;
 use p256::elliptic_curve::ecdh::diffie_hellman;
 use p256::{PublicKey, ecdsa::{SigningKey, signature::Signer}};
 use rand::{CryptoRng, RngCore};
@@ -16,6 +18,11 @@ impl IdentityKeyPublic {
         IdentityKeyPublic(
             PublicKey::from_secret_scalar(&private.0.to_nonzero_scalar())
         )
+    }
+
+    pub fn verify(&self, msg: &[u8], signature: &Signature) -> Result<(), p256::ecdsa::Error> {
+        let vk = VerifyingKey::from(self.0);
+        vk.verify(msg, &signature.0)
     }
 }
 
@@ -88,8 +95,24 @@ impl PrivateKey {
 
 pub struct SharedSecret (p256::ecdh::SharedSecret);
 
-pub struct X3dhSharedSecret {
+impl SharedSecret {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.raw_secret_bytes().to_vec()
+    }
+}
 
+pub struct X3dhSharedSecret (Vec<u8>);
+
+impl X3dhSharedSecret {
+    pub fn to_bytes(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl X3dhSharedSecret {
+    pub fn from(bytes: &[u8]) -> Self {
+        X3dhSharedSecret(bytes.to_vec())
+    }
 }
 
 pub struct IdentityKeyPair (IdentityKeyPublic, PrivateKey);
@@ -135,7 +158,7 @@ impl EphemeralKeyPair {
         self.0.clone()
     }
 
-    pub fn diffie_hellman<K: Key>(self, key: &K) -> SharedSecret {
+    pub fn diffie_hellman<K: Key>(&self, key: &K) -> SharedSecret {
         let sk = self.1.0.to_nonzero_scalar();
         let pk = key.key().as_affine();
         let dh = diffie_hellman(sk, pk);
@@ -163,6 +186,10 @@ impl SignedPreKeyPair {
         let pk = key.key().as_affine();
         let dh = diffie_hellman(sk, pk);
         SharedSecret(dh)
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.0.to_sec1_bytes().to_vec()
     }
 }
 
