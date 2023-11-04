@@ -4,7 +4,7 @@ pub mod error;
 
 use hkdf::Hkdf;
 use error::X3dhError;
-use keys::{Signature, IdentityKeyPair, SignedPreKeyPublic, EphemeralKeyPair, IdentityKeyPublic, OneTimePreKeyPublic, X3dhSharedSecret, SignedPreKeyPair, EphemeralKeyPublic, OneTimeKeyPair, Key, SharedSecret};
+use keys::{Signature, IdentityKeyPair, SignedPreKeyPublic, EphemeralKeyPair, IdentityKeyPublic, OneTimePreKeyPublic, X3dhSharedSecret, SignedPreKeyPair, EphemeralKeyPublic, OneTimeKeyPair, Key, SharedSecret, KeyPair};
 
 fn dh_to_shared(
     dh1: &SharedSecret,
@@ -61,7 +61,7 @@ pub fn x3dh(
 
 #[cfg(test)]
 mod x3dh_test {
-    use crate::{keys::{IdentityKeyPair, EphemeralKeyPair, SignedPreKeyPair, OneTimeKeyPair}, x3dh_sig, x3dh};
+    use crate::{keys::{IdentityKeyPair, EphemeralKeyPair, SignedPreKeyPair, OneTimeKeyPair, KeyPair, Key}, x3dh_sig, x3dh};
 
     #[test]
     fn x3dh_protocol_test() {
@@ -72,8 +72,8 @@ mod x3dh_test {
 
         let ikb = IdentityKeyPair::generate(&mut rng);
         let spb = SignedPreKeyPair::generate(&mut rng);
-        let opb = OneTimeKeyPair::generate(&mut rng, 0);
-        let sig = ikb.sign(&spb.to_bytes());
+        let opb = OneTimeKeyPair::generate(&mut rng).with_index(0);
+        let sig = ikb.sign(&spb.public().key().to_sec1_bytes());
 
         let ssa = x3dh_sig(
             &sig,
