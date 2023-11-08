@@ -3,12 +3,28 @@ use p256::ecdsa::signature::Verifier;
 use p256::elliptic_curve::ecdh::diffie_hellman;
 use p256::{PublicKey, ecdsa::{SigningKey, signature::Signer}};
 use rand::{CryptoRng, RngCore};
+use sha2::digest::generic_array::GenericArray;
 
 pub struct Signature (p256::ecdsa::Signature);
+
+impl Signature {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.to_vec()
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        let bytes = GenericArray::from_slice(bytes);
+        Signature(p256::ecdsa::Signature::from_bytes(bytes).unwrap())
+    }
+}
 
 pub trait Key {
     fn generate_for_private(private: &PrivateKey) -> Self;
     fn key(&self) -> &PublicKey;
+    fn to_bytes(&self) -> Vec<u8> {
+        self.key().to_sec1_bytes().to_vec()
+    }
+    fn from_bytes(bytes: &[u8]) -> Self;
 }
 
 #[derive(Clone)]
@@ -31,6 +47,10 @@ impl Key for IdentityKeyPublic {
     fn key(&self) -> &PublicKey {
         &self.0
     }
+
+    fn from_bytes(bytes: &[u8]) -> Self {
+        IdentityKeyPublic(PublicKey::from_sec1_bytes(bytes).unwrap())
+    }
 }
 
 #[derive(Clone)]
@@ -45,6 +65,10 @@ impl Key for EphemeralKeyPublic {
 
     fn key(&self) -> &PublicKey {
         &self.0
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Self {
+        EphemeralKeyPublic(PublicKey::from_sec1_bytes(bytes).unwrap())
     }
 }
 
@@ -61,6 +85,10 @@ impl Key for SignedPreKeyPublic {
     fn key(&self) -> &PublicKey {
         &self.0
     }
+
+    fn from_bytes(bytes: &[u8]) -> Self {
+        SignedPreKeyPublic(PublicKey::from_sec1_bytes(bytes).unwrap())
+    }
 }
 
 #[derive(Clone)]
@@ -76,6 +104,10 @@ impl Key for OneTimePreKeyPublic {
     fn key(&self) -> &PublicKey {
         &self.0
     }
+
+    fn from_bytes(bytes: &[u8]) -> Self {
+        OneTimePreKeyPublic(PublicKey::from_sec1_bytes(bytes).unwrap())
+    }
 }
 
 pub struct PrivateKey (p256::SecretKey);
@@ -85,6 +117,15 @@ impl PrivateKey {
         PrivateKey(
             p256::SecretKey::random(rng)
         )
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.to_bytes().to_vec()
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        let bytes = GenericArray::from_slice(bytes);
+        PrivateKey( p256::SecretKey::from_bytes(bytes).unwrap() )
     }
 }
 
@@ -111,7 +152,7 @@ impl X3dhSharedSecret {
 }
 
 pub trait KeyPair {
-    type PairPublicKey;
+    type PairPublicKey: Key;
 
     fn generate<R: CryptoRng + RngCore>(rng: &mut R) -> Self;
     fn public(&self) -> &Self::PairPublicKey;
@@ -122,6 +163,14 @@ pub trait KeyPair {
         let dh = diffie_hellman(sk, pk);
         SharedSecret(dh)
     }
+
+    fn to_bytes(&self) -> Vec<u8> {
+        let pk = self.public().to_bytes();
+        let sk = self.private().to_bytes();
+        bincode::serialize(&(pk, sk)).unwrap()
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Self;
 }
 
 pub struct IdentityKeyPair (IdentityKeyPublic, PrivateKey);
@@ -145,6 +194,10 @@ impl KeyPair for IdentityKeyPair {
         &self.1
     }
 
+    fn from_bytes(bytes: &[u8]) -> Self {
+        let (pk, sk): (Vec<u8>, Vec<u8>) = bincode::deserialize(bytes).unwrap();
+        IdentityKeyPair(Self::PairPublicKey::from_bytes(&pk), PrivateKey::from_bytes(&sk)) 
+    }
 }
 
 impl IdentityKeyPair {
@@ -174,6 +227,11 @@ impl KeyPair for EphemeralKeyPair {
     fn private(&self) -> &PrivateKey {
         &self.1
     }
+
+    fn from_bytes(bytes: &[u8]) -> Self {
+        let (pk, sk): (Vec<u8>, Vec<u8>) = bincode::deserialize(bytes).unwrap();
+        EphemeralKeyPair(Self::PairPublicKey::from_bytes(&pk), PrivateKey::from_bytes(&sk)) 
+    }
 }
 
 pub struct SignedPreKeyPair (SignedPreKeyPublic, PrivateKey);
@@ -195,6 +253,11 @@ impl KeyPair for SignedPreKeyPair {
 
     fn private(&self) -> &PrivateKey {
         &self.1
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Self {
+        let (pk, sk): (Vec<u8>, Vec<u8>) = bincode::deserialize(bytes).unwrap();
+        SignedPreKeyPair(Self::PairPublicKey::from_bytes(&pk), PrivateKey::from_bytes(&sk)) 
     }
 }
 
@@ -218,6 +281,18 @@ impl KeyPair for OneTimeKeyPair {
 
     fn private(&self) -> &PrivateKey {
         &self.1
+    }
+
+    fn to_bytes(&self) -> Vec<u8> {
+        let pk = self.public().to_bytes();
+        let sk = self.private().to_bytes();
+        let idx = self.index();
+        bincode::serialize(&(pk, sk, idx)).unwrap()
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Self {
+        let (pk, sk, idx): (Vec<u8>, Vec<u8>, u16) = bincode::deserialize(bytes).unwrap();
+        OneTimeKeyPair(Self::PairPublicKey::from_bytes(&pk), PrivateKey::from_bytes(&sk), idx) 
     }
 }
 
