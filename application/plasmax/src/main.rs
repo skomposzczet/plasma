@@ -4,6 +4,7 @@ mod account;
 mod api;
 mod chats;
 mod tui;
+mod keyring;
 
 use crate::tui::tools::Mode;
 use account::Authorized;

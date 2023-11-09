@@ -1,11 +1,7 @@
-use std::{fs::{self, File, create_dir_all}, io::{Error, ErrorKind, Write}, path::PathBuf, marker::PhantomData};
+use std::marker::PhantomData;
 use bson::oid::ObjectId;
-use home::home_dir;
-use crate::{api::{Api, body::FindBody, response::Message}, chats::{Chats, get_non_user_id}};
+use crate::{api::{Api, body::FindBody, response::Message}, chats::{Chats, get_non_user_id}, keyring::Keyring};
 use crate::error::PlasmaError;
-
-const BASE_PATH: &'static str = ".plasmax";
-const TOKEN_FILENAME: &'static str = "token";
 
 pub struct Authorized;
 pub struct NotAuthorized;
@@ -16,51 +12,26 @@ pub struct Account<State = NotAuthorized> {
     id: Option<ObjectId>,
     token: Option<String>,
     state: PhantomData<State>,
+    keyring: Keyring,
 }
 
 impl Account {
     pub fn new(mail: String) -> Self {
+        let keyring = Keyring::new(&mail);
         Account {
             mail,
             username: None,
             id: None,
             token: None,
             state: PhantomData,
+            keyring,
         }
-    }
-
-    fn account_path(&self) -> Result<PathBuf, Error> {
-        let path = home_dir()
-            .ok_or(Error::new(ErrorKind::NotFound, "Impossible to get home directory."))?
-            .join(BASE_PATH)
-            .join(self.mail.clone());
-        create_dir_all(&path)?;
-        Ok(path)
-    }
-
-    fn token_path(&self) -> Result<PathBuf, Error> {
-        let path = self.account_path()?
-            .join(TOKEN_FILENAME);
-        Ok(path)
-    }
-
-    fn read_token(&self) -> Result<String, Error> {
-        let path = self.token_path()?;
-        let token = fs::read_to_string(path)?;
-        Ok(token)
-    }
-
-    fn save_token(&self, token: &str) -> Result<(), Error> {
-        let path = self.token_path()?;
-        let mut file = File::create(path)?;
-        file.write_all(token.as_bytes())?;
-        Ok(())
     }
 }
 
 impl Account<NotAuthorized> {
     pub async fn try_login_token(self, api: &Api) -> Result<Account<Authorized>, PlasmaError> {
-        let token = self.read_token()?;
+        let token = self.keyring.read_token()?;
         let username = api.dashboard(&token).await?;
         let params = FindBody::username(username.clone());
         let id = api.find(&token, params).await?.id;
@@ -70,13 +41,15 @@ impl Account<NotAuthorized> {
             id: Some(id),
             token: Some(token),
             state: PhantomData,
+            keyring: Keyring::new(&self.mail),
         };
+        account.first_login().await;
         Ok(account)
     }
 
     pub async fn login(self, password: String, api: &Api) -> Result<Account<Authorized>, PlasmaError> {
         let token = api.login(&self.mail, password).await?;
-        self.save_token(&token)?;
+        self.keyring.save_token(&token)?;
         self.try_login_token(api).await
     }
 }
@@ -116,5 +89,9 @@ impl Account<Authorized> {
     pub async fn messages(&self, api: &Api, chat_id: &ObjectId) -> Result<Vec<Message> ,PlasmaError> {
         let messages = api.messages(self.token(), chat_id).await?;
         Ok(messages)
+    }
+
+    pub async fn first_login(&self) {
+        
     }
 }
