@@ -1,7 +1,31 @@
 use std::marker::PhantomData;
 use bson::oid::ObjectId;
+use x3dh::{handshake::{RegisterBundle, OneTimePreKeyPublicBundle, InitialMessage, PeerBundle}, keys::{IdentityKeyPair, KeyPair, SignedPreKeyPair, OneTimeKeyPair, Key, Signature, EphemeralKeyPair}, x3dh_sig, x3dh};
 use crate::{api::{Api, body::FindBody, response::Message}, chats::{Chats, get_non_user_id}, keyring::Keyring};
 use crate::error::PlasmaError;
+
+struct KeyPack {
+    identity: IdentityKeyPair,
+    signed: SignedPreKeyPair,
+    one_time: Vec<OneTimeKeyPair>,
+    signature: Signature,
+}
+
+impl KeyPack {
+    fn generate(first_index: u16) -> Self {
+        let mut rng = rand::rngs::OsRng::default();
+
+        let identity = IdentityKeyPair::generate(&mut rng);
+        let signed = SignedPreKeyPair::generate(&mut rng);
+        let signature = identity.sign(&signed.public().key().to_sec1_bytes());
+        let onetime: Vec<OneTimeKeyPair> = (first_index..first_index+50)
+            .map(|index| OneTimeKeyPair::generate(&mut rng).with_index(index))
+            .collect();
+
+        KeyPack { identity, signed, one_time: onetime, signature }
+    }
+
+}
 
 pub struct Authorized;
 pub struct NotAuthorized;
@@ -43,7 +67,7 @@ impl Account<NotAuthorized> {
             state: PhantomData,
             keyring: Keyring::new(&self.mail),
         };
-        account.first_login().await;
+        account.check_first_login(&api).await?;
         Ok(account)
     }
 
@@ -86,12 +110,45 @@ impl Account<Authorized> {
         Ok(chat)
     }
 
-    pub async fn messages(&self, api: &Api, chat_id: &ObjectId) -> Result<Vec<Message> ,PlasmaError> {
+    pub async fn messages(&self, api: &Api, chat_id: &ObjectId) -> Result<Vec<Message>, PlasmaError> {
         let messages = api.messages(self.token(), chat_id).await?;
         Ok(messages)
     }
 
-    pub async fn first_login(&self) {
-        
+    pub async fn check_first_login(&self, api: &Api) -> Result<(), PlasmaError> {
+        match self.keyring.read_identity() {
+            Ok(_) => Ok(()),
+            Err(_) => self.register_bundle(&api).await
+        }
+    }
+
+    pub async fn register_bundle(&self, api: &Api) -> Result<(), PlasmaError> {
+        let key_pack = KeyPack::generate(0);
+        self.save_key_pack(&key_pack)?;
+        self.upload_bundle(&api, key_pack).await?;
+        Ok(())
+    }
+
+    fn save_key_pack(&self, key_pack: &KeyPack) -> Result<(), PlasmaError> {
+        self.keyring.save_identity(&key_pack.identity)?;
+        self.keyring.save_signed(&key_pack.signed)?;
+        for key in key_pack.one_time.iter() {
+            self.keyring.save_onetime(&key)?;
+        }
+        Ok(())
+    }
+
+    async fn upload_bundle(&self, api: &Api, key_pack: KeyPack) -> Result<(), PlasmaError> {
+        let bundle = RegisterBundle {
+            identity: key_pack.identity.public().clone(),
+            signed_pre: key_pack.signed.public().clone(),
+            signature: key_pack.signature,
+            one_time_pres: key_pack.one_time.iter()
+                .map(|key| OneTimePreKeyPublicBundle::from_pair(key))
+                .collect(),
+        };
+        api.send_bundle(self.token(), &bundle).await?;
+
+        Ok(())
     }
 }
