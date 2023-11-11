@@ -91,6 +91,58 @@ impl Account<Authorized> {
         self.id.as_ref().unwrap()
     }
 
+    pub async fn ensure_secret(&self, api: &Api, chat_id: &ObjectId, username: &str) -> Result<(), PlasmaError> {
+        if self.keyring.read_secret(username).is_err() {
+            match api.get_initial_message(self.token(), &chat_id).await? {
+                Some(message) => {
+                    self.make_secret_from_initial_messsage(username, message)?;
+                },
+                None => {
+                    let bundle = api.get_peer_bundle(self.token(), username).await?;
+                    let message = self.make_secret_from_peer_bundle(bundle, username)?;
+                    api.send_initial_message(self.token(), chat_id.clone(), message).await?;
+                },
+            };
+        }
+        Ok(())
+    }
+
+    fn make_secret_from_initial_messsage(&self, member: &str, message: InitialMessage) -> Result<(), PlasmaError> {
+        let identity = self.keyring.read_identity()?;
+        let signed = self.keyring.read_signed()?;
+        let onetime = self.keyring.read_onetime(message.one_time_idx)?;
+        let secret = x3dh(
+            &message.identity,
+            &signed,
+            &message.ephemeral,
+            &identity,
+            &onetime
+            );
+        self.keyring.save_secret(member, &secret)?;
+        Ok(())
+    }
+
+    fn make_secret_from_peer_bundle(&self, bundle: PeerBundle, member: &str) -> Result<InitialMessage, PlasmaError> {
+        let identity = self.keyring.read_identity()?;
+        let mut rng = rand::rngs::OsRng::default();
+        let ephemeral = EphemeralKeyPair::generate(&mut rng);
+        let secret = x3dh_sig(
+            &bundle.signature, 
+            &identity, 
+            &bundle.signed_pre, 
+            &ephemeral, 
+            &bundle.identity, 
+            &bundle.one_time_pre.key()
+            ).unwrap();
+        self.keyring.save_secret(member, &secret)?;
+        let message = InitialMessage {
+            identity: identity.public().clone(),
+            ephemeral: ephemeral.public().clone(),
+            one_time_idx: bundle.one_time_pre.index(),
+        };
+        Ok(message)
+    }
+
     pub async fn chats(&self, api: &Api) -> Result<Chats, PlasmaError> {
         let chats = api.chats(self.token()).await?;
         let mut usernames: Vec<String> = Vec::new();
@@ -105,9 +157,10 @@ impl Account<Authorized> {
         Ok(chats)
     }
 
-    pub async fn chat(&self, api: &Api, member: &str) -> Result<ObjectId, PlasmaError> {
-        let chat = api.chat(self.token(), member).await?;
-        Ok(chat)
+    pub async fn chat(&self, api: &Api, username: &str) -> Result<ObjectId, PlasmaError> {
+        let chat_id = api.chat(self.token(), username).await?;
+        self.ensure_secret(api, &chat_id, username).await?;
+        Ok(chat_id)
     }
 
     pub async fn messages(&self, api: &Api, chat_id: &ObjectId) -> Result<Vec<Message>, PlasmaError> {

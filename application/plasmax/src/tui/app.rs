@@ -75,10 +75,14 @@ impl App {
         if !changed {
             return;
         }
-        let chat_id = self.items.get().unwrap().id;
+        let chat = self.items.get().unwrap();
+        self.account
+            .ensure_secret(&self.api, &chat.id, &chat.user.username)
+            .await
+            .unwrap();
         let oid = self.account.id();
         self.messages_buffer = MessagesBuffer::new(self.account.username().clone());
-        for message in self.account.messages(&self.api, &chat_id).await.unwrap().iter() {
+        for message in self.account.messages(&self.api, &chat.id).await.unwrap().iter() {
             let username = match message.sender_id == *oid {
                 true => self.account.username().clone(),
                 false => self.items.get().unwrap().user.username.clone(),
