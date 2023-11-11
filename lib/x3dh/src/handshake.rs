@@ -1,11 +1,20 @@
 use serde::{Serialize, Deserialize};
 use crate::keys::{Signature, SignedPreKeyPublic, IdentityKeyPublic, OneTimePreKeyPublic, OneTimeKeyPair, EphemeralKeyPublic, KeyPair, Key};
 
+#[derive(Clone)]
 pub struct OneTimePreKeyPublicBundle (OneTimePreKeyPublic, u16);
 
 impl OneTimePreKeyPublicBundle {
     pub fn from_pair(key: &OneTimeKeyPair) -> Self {
         OneTimePreKeyPublicBundle(key.public().clone(), key.index())
+    }
+
+    pub fn key(&self) -> &OneTimePreKeyPublic {
+        &self.0
+    }
+
+    pub fn index(&self) -> u16 {
+        self.1
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -99,6 +108,7 @@ impl PeerBundleBinary {
 pub struct InitialMessage {
     pub identity: IdentityKeyPublic,
     pub ephemeral: EphemeralKeyPublic,
+    pub one_time_idx: u16,
 }
 
 impl InitialMessage {
@@ -106,6 +116,7 @@ impl InitialMessage {
         InitialMessageBinary {
             identity: self.identity.to_bytes(),
             ephemeral: self.ephemeral.to_bytes(),
+            one_time_idx: self.one_time_idx,
         }
     }
 }
@@ -114,6 +125,7 @@ impl InitialMessage {
 pub struct InitialMessageBinary {
     identity: Vec<u8>,
     ephemeral: Vec<u8>,
+    one_time_idx: u16,
 }
 
 impl InitialMessageBinary {
@@ -121,6 +133,7 @@ impl InitialMessageBinary {
         InitialMessage {
             identity: IdentityKeyPublic::from_bytes(&self.identity),
             ephemeral: EphemeralKeyPublic::from_bytes(&self.ephemeral),
+            one_time_idx: self.one_time_idx,
         }
     }
 }
