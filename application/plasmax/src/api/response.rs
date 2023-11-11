@@ -1,5 +1,6 @@
 use bson::oid::ObjectId;
 use serde::Deserialize;
+use x3dh::handshake;
 
 #[derive(Deserialize)]
 pub struct OkResponse<T> {
@@ -62,4 +63,24 @@ pub struct Message {
 #[derive(Deserialize)]
 pub struct MessagesResponse {
     pub messages: Vec<Message>,
+}
+
+#[derive(Deserialize)]
+pub struct SendBundleResponse {
+    pub bundle: String,
+}
+
+#[derive(Deserialize)]
+pub struct PeerBundleResponse {
+    pub bundle: handshake::PeerBundleBinary,
+}
+
+#[derive(Deserialize)]
+pub struct InitialMessageResponse {
+    pub message: String,
+}
+
+#[derive(Deserialize)]
+pub struct GetInitialMesssageResponse {
+    pub message: Option<handshake::InitialMessageBinary>,
 }

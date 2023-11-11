@@ -1,5 +1,6 @@
 use serde::Serialize;
 use bson::oid::ObjectId;
+use x3dh::handshake;
 
 #[derive(Serialize)]
 pub struct RegisterBody {
@@ -33,4 +34,10 @@ impl FindBody {
 #[derive(Serialize)]
 pub struct ChatBody {
     pub member: String,
+}
+
+#[derive(Serialize)]
+pub struct SendInitialMessageBody {
+    pub chat_id: ObjectId,
+    pub message: handshake::InitialMessageBinary,
 }

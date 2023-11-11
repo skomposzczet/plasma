@@ -5,6 +5,7 @@ pub mod ws;
 use bson::oid::ObjectId;
 use reqwest::Client;
 use url::Url;
+use x3dh::handshake;
 
 const BASE_URL: &'static str = "http://localhost:8000";
 
@@ -164,5 +165,82 @@ impl Api {
             .messages;
 
         Ok(messages)
+    }
+    
+    pub async fn send_bundle(&self, token: &str, bundle: &handshake::RegisterBundle) -> Result<String, ApiError> {
+        let url = Self::api_path("bundle");
+
+        let response = self.client
+            .post(url)
+            .json(&bundle.serialize())
+            .bearer_auth(token)
+            .send()
+            .await;
+
+        let response = response?
+            .json::<response::OkResponse<response::SendBundleResponse>>().await?
+            .data
+            .bundle;
+
+        Ok(response)
+    }
+
+    pub async fn get_peer_bundle(&self, token: &str, username: &str) -> Result<handshake::PeerBundle, ApiError> {
+        let url = Self::api_path("peer_bundle");
+
+        let response = self.client
+            .post(url)
+            .json(username)
+            .bearer_auth(token)
+            .send()
+            .await;
+
+        let bundle = response?
+            .json::<response::OkResponse<response::PeerBundleResponse>>().await?
+            .data
+            .bundle
+            .deserialize();
+
+        Ok(bundle)
+    }
+
+    pub async fn send_initial_message(&self, token: &str, chat_id: ObjectId, message: handshake::InitialMessage) -> Result<(), ApiError> {
+        let url = Self::api_path("initial_message");
+
+        let params = body::SendInitialMessageBody {
+            chat_id,
+            message: message.serialize(),
+        };
+
+        let response = self.client
+            .post(url)
+            .json(&params)
+            .bearer_auth(token)
+            .send()
+            .await;
+
+        response?.json::<response::OkResponse<response::InitialMessageResponse>>().await?;
+
+        Ok(())
+    }
+
+    pub async fn get_initial_message(&self, token: &str, chat_id: &ObjectId) -> Result<Option<handshake::InitialMessage>, ApiError> {
+        let url = Self::api_path("get_initial_message");
+
+        let response = self.client
+            .post(url)
+            .json(&chat_id)
+            .bearer_auth(token)
+            .send()
+            .await;
+
+        let message = response?
+            .json::<response::OkResponse<response::GetInitialMesssageResponse>>().await?
+            .data
+            .message;
+
+        let message = message.map(|m| m.deserialize());
+
+        Ok(message)
     }
 }
