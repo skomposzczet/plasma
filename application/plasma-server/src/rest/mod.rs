@@ -1,6 +1,7 @@
 mod user;
 mod chat;
 mod message;
+mod keys;
 
 use std::sync::Arc;
 use serde::Serialize;
@@ -12,6 +13,7 @@ pub fn rest_routes(db: Arc<Db>) -> impl Filter<Extract = (impl Reply,), Error = 
     user::account_paths(db.clone())
         .or(chat::chat_paths(db.clone()))
         .or(message::message_paths(db.clone()))
+        .or(keys::keys_paths(db.clone()))
 
 }
 

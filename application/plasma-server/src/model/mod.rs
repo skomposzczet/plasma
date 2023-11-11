@@ -2,6 +2,7 @@ pub mod db;
 pub mod user;
 pub mod chat;
 pub mod message;
+pub mod keys;
 
 pub use db::Db;
 
