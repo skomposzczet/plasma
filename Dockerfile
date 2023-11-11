@@ -1,6 +1,8 @@
 FROM rust:1.73.0 as builder
+WORKDIR /usr/lib/x3dh
+COPY ./lib/x3dh .
 WORKDIR /usr/src/server
-COPY . .
+COPY ./application/plasma-server .
 RUN cargo install --path .
 
 FROM debian:bookworm-20231009-slim

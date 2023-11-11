@@ -15,7 +15,7 @@ services:
 
   server:
     image: 'plasma-server'
-    build: ./application/plasma-server
+    build: .
     environment:
       - RUST_LOG=info
     ports:
