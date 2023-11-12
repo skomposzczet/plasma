@@ -6,14 +6,15 @@ use futures::{StreamExt, SinkExt, TryFutureExt};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use warp::{Filter, reject::Rejection, reply::Reply, ws::WebSocket};
-use crate::{model::{Db, chat::Chat, message::Message}, server::with_auth, ClientsHandle, error};
+use crate::{model::{Db, chat::Chat, message::Message}, server::with_auth, ClientsHandle};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[derive(Serialize, Deserialize)]
 struct WsMessage {
     chat_id: String,
     sender_id: String,
-    content: String,
+    content: Vec<u8>,
+    timestamp: u64,
 }
 
 pub fn ws_paths(db: Arc<Db>, clients: ClientsHandle) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
@@ -78,7 +79,7 @@ async fn user_message(db: Arc<Db>, oid: &str, msg: warp::filters::ws::Message, c
     let chat = Chat::get_by_id(&db, &ws_msg.chat_id).await.unwrap();
     let sender_id = ObjectId::from_str(&ws_msg.sender_id).unwrap();
 
-    let new_message = Message::new(chat.id().unwrap(), sender_id, ws_msg.content);
+    let new_message = Message::new(chat.id().unwrap(), sender_id, ws_msg.content, ws_msg.timestamp);
     if let Err(e) = Message::add_to_db(&db, &new_message).await {
         error!("Failed to send message: {}", e);
         return;

@@ -3,10 +3,9 @@ use bson::oid::ObjectId;
 use mongodb::options::FindOptions;
 use futures::TryStreamExt;
 use serde::{Serialize, Deserialize};
-use crate::model::{Db, db, Error};
+use crate::model::{Db, Error};
 use crate::error;
-use super::{objectid_from_str, from_document, BsonError};
-use super::DATABASE;
+use super::{BsonError, DATABASE};
 
 const COLLECTION: &'static str  = "message";
 
@@ -16,16 +15,18 @@ pub struct Message {
     id: Option<ObjectId>,
     chat_id: ObjectId,
     sender_id: ObjectId,
-    message: String,
+    message: Vec<u8>,
+    timestamp: u64,
 }
 
 impl Message {
-    pub fn new(chat_id: ObjectId, sender_id: ObjectId, message: String) -> Self {
+    pub fn new(chat_id: ObjectId, sender_id: ObjectId, message: Vec<u8>, timestamp: u64) -> Self {
         Message {
             id: None,
             chat_id,
             sender_id,
             message,
+            timestamp,
         }
     }
 

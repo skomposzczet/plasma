@@ -8,7 +8,8 @@ use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 pub struct WsMessage {
     pub chat_id: String,
     pub sender_id: String,
-    pub content: String,
+    pub content: Vec<u8>,
+    pub timestamp: u64,
 }
 
 pub struct ThreadComm<T> {

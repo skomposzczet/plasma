@@ -57,7 +57,8 @@ pub struct Message {
     pub id: Option<ObjectId>,
     pub chat_id: ObjectId,
     pub sender_id: ObjectId,
-    pub message: String,
+    pub message: Vec<u8>,
+    pub timestamp: u64,
 }
 
 #[derive(Deserialize)]

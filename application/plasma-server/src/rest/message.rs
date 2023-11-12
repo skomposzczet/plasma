@@ -10,7 +10,8 @@ use super::json_response;
 #[derive(Deserialize)]
 struct SendMessageBody {
     chat_id: ObjectId,
-    message: String,
+    message: Vec<u8>,
+    timestamp: u64,
 }
 
 pub fn message_paths(db: Arc<Db>) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone {
@@ -48,7 +49,7 @@ async fn get_messages_handle(db: Arc<Db>, oid: String, chat_id: ObjectId) -> Res
 
 async fn add_message_handle(db: Arc<Db>, oid: String, body: SendMessageBody) -> Result<Json, Rejection> {
     let id = objectid_from_str(&oid).unwrap();
-    let new_message = Message::new(body.chat_id, id, body.message);
+    let new_message = Message::new(body.chat_id, id, body.message, body.timestamp);
     Message::add_to_db(&db, &new_message).await?;
     let response = json!({
         "send message": "ok"
