@@ -30,7 +30,8 @@ pub struct Ws {
 impl Ws {
     pub fn new(url: &str, token: &str) -> Self {
         Ws {
-            url: url.parse().unwrap(),
+            url: url.parse()
+                .expect("Url is hardcoded"),
             token: String::from(token),
         }
     }
@@ -39,7 +40,8 @@ impl Ws {
         let (tx, rx) = mpsc::channel::<WsMessage>(1000);
         let (tx2, rx2) = mpsc::channel::<WsMessage>(1000);
 
-        let req = self.make_request().unwrap();
+        let req = self.make_request()
+            .expect("Url is hardcoded");
         tokio::spawn(async {Self::run_impl(req, tx2, rx)}.await);
 
         ThreadComm {

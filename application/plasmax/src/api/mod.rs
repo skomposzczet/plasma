@@ -28,9 +28,9 @@ impl Api {
 
     fn api_path(endpoint: &str) -> Url {
         Url::parse(BASE_URL)
-            .unwrap()
+            .expect("Hardcoded base URL path")
             .join(endpoint)
-            .unwrap()
+            .expect("Hardcoded enpoint")
     }
 
     pub async fn login(&self, email: &str, password: String) -> Result<String, ApiError> {

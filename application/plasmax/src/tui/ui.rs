@@ -15,6 +15,7 @@ pub fn ui<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &mut App) {
             _ => {},
         }
     }
+    draw_error_popup(f, app);
 }
 
 fn create_layout(area: Rect) -> Vec<Rect> {
@@ -139,4 +140,36 @@ fn draw_message_box<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App, a
             area.y + 1,
         )
     }
+}
+
+pub fn draw_error_popup<B: ratatui::backend::Backend>(f: &mut Frame<B>, app: &App) {
+    if !app.error_message.is_err() {
+        return;
+    }
+    let message = app.error_message.get().expect("Has value beacuse is_err is true");
+    let block = Block::new().title("Error").borders(Borders::ALL);
+    let paragraph = Paragraph::new(message).block(block);
+    let area = centered_rect(40, 40, f.size());
+    f.render_widget(Clear, area);
+    f.render_widget(paragraph, area);
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+             Constraint::Percentage((100 - percent_y) / 2),
+             Constraint::Percentage(percent_y),
+             Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+             Constraint::Percentage((100 - percent_x) / 2),
+             Constraint::Percentage(percent_x),
+             Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }

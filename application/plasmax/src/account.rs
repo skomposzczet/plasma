@@ -80,15 +80,18 @@ impl Account<NotAuthorized> {
 
 impl Account<Authorized> {
     pub fn token(&self) -> &str {
-        self.token.as_ref().unwrap()
+        self.token.as_ref()
+            .expect("Authorized user has token field")
     }
 
     pub fn username(&self) -> &String {
-        self.username.as_ref().unwrap()
+        self.username.as_ref()
+            .expect("Authorized user has username field")
     }
 
     pub fn id(&self) -> &ObjectId {
-        self.id.as_ref().unwrap()
+        self.id.as_ref()
+            .expect("Authorized user has id field")
     }
 
     pub async fn ensure_secret(&self, api: &Api, chat_id: &ObjectId, username: &str) -> Result<(), PlasmaError> {
@@ -138,7 +141,7 @@ impl Account<Authorized> {
             &ephemeral, 
             &bundle.identity, 
             &bundle.one_time_pre.key()
-            ).unwrap();
+            )?;
         self.keyring.save_secret(member, &secret)?;
         let message = InitialMessage {
             identity: identity.public().clone(),
@@ -152,9 +155,10 @@ impl Account<Authorized> {
         let chats = api.chats(self.token()).await?;
         let mut usernames: Vec<String> = Vec::new();
         for chat in chats.iter() {
-            let id = get_non_user_id(&chat.users, self.id());
-            let params = FindBody::id(id.unwrap());
-            let un = api.find(self.token(), params).await.unwrap().username;
+            let id = get_non_user_id(&chat.users, self.id())
+                .expect("Chats without self not supported");
+            let params = FindBody::id(id);
+            let un = api.find(self.token(), params).await?.username;
             usernames.push(un);
         }
         let chats = Chats::new(chats, usernames, self.id());

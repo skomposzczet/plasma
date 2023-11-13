@@ -35,7 +35,8 @@ impl Chats {
                 Chat {
                     id: c.0.id.clone(),
                     user: UserHandle {
-                        id: get_non_user_id(&c.0.users, userid).unwrap(),
+                        id: get_non_user_id(&c.0.users, userid)
+                            .expect("Chats without self not supported"),
                         username: c.1.clone(),
                     }
                 }

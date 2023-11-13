@@ -224,3 +224,25 @@ impl MessagesBuffer {
         self.scroll_offset = 0;
     }
 }
+
+#[derive(Default)]
+pub struct ErrorMessage {
+    message: Option<String>,
+}
+
+impl ErrorMessage {
+    pub fn get(&self) -> Option<String> {
+        self.message.clone()
+    }
+    pub fn set(&mut self, message: &str) {
+        self.message = Some(String::from(message));
+    }
+
+    pub fn clear(&mut self) {
+        self.message = None;
+    }
+
+    pub fn is_err(&self) -> bool {
+        self.message.is_some()
+    }
+}

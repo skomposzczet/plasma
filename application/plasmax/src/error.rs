@@ -1,5 +1,6 @@
 use thiserror::Error;
-use crate::api::ApiError;
+use x3dh::error::X3dhError;
+use crate::{api::ApiError, cipher::CipherError};
 
 #[derive(Error, Debug)]
 pub enum PlasmaError {
@@ -7,4 +8,8 @@ pub enum PlasmaError {
     IoError( #[from] std::io::Error ),
     #[error(transparent)]
     ServerError( #[from] ApiError),
+    #[error(transparent)]
+    MessageCipherError( #[from] CipherError),
+    #[error(transparent)]
+    X3dhLibError( #[from] X3dhError),
 }
