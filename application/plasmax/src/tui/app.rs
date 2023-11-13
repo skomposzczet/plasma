@@ -1,3 +1,4 @@
+use bson::oid::ObjectId;
 use crossterm::event::KeyCode;
 use crate::{api::{Api, ws::{ThreadComm, Ws, WsMessage}}, account::{Account, Authorized}, error::PlasmaError, chats::Chat, cipher::Cipher};
 use super::tools::{Mode, StatefulList, UserInput, MessagesBuffer, ErrorMessage};
@@ -179,42 +180,51 @@ impl App {
 
     async fn submit(&mut self) -> Result<(), PlasmaError> {
         match self.mode {
-            Mode::NewChat => {
-                let username = self.new_chat_input.submit();
-                self.account.chat(&self.api, &username).await?;
-                let chats = self.account.chats(&self.api).await?.chats;
-                self.items = StatefulList::with_items(chats);
-                Ok(())
-            },
-            Mode::Message => {
-                let message = self.message_input.submit();
-                if message.is_empty() {
-                    return Ok(());
-                }
-                let current_chat = match self.items.get() {
-                    Some(chat) => chat,
-                    None => return Ok(()),
-                };
-                let timestamp = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .expect("Time went backwards")
-                    .as_micros() as u64;
-                let encrypted = self.cipher
-                    .as_ref()
-                    .expect("Cipher should be some if messages are read")
-                    .encrypt(&message, timestamp)?;
-                let ws_message = WsMessage {
-                    chat_id: current_chat.id.to_string(),
-                    sender_id: self.account.id().clone().to_string(),
-                    content: encrypted,
-                    timestamp,
-                };
-                self.messages_buffer.push(self.account.username(), &message);
-                self.comms.sender.send(ws_message).await.unwrap();
-                Ok(())
-            },
-            _ => Ok(()),
+            Mode::NewChat => self.submit_new_chat().await?,
+            Mode::Message => self.submit_message().await?,
+            _ => {},
         }
+        Ok(())
+    }
+
+    async fn submit_new_chat(&mut self) -> Result<(), PlasmaError> {
+        let username = self.new_chat_input.submit();
+        self.account.chat(&self.api, &username).await?;
+        let chats = self.account.chats(&self.api).await?.chats;
+        self.items = StatefulList::with_items(chats);
+        Ok(())
+    }
+
+    async fn submit_message(&mut self) -> Result<(), PlasmaError> {
+        let message = self.message_input.submit();
+        if message.is_empty() {
+            return Ok(());
+        }
+        let current_chat = self.items
+            .get()
+            .expect("Not possible to write message when no chat selected");
+        let ws_message = self.make_message(&message, &current_chat.id)?;
+        self.messages_buffer.push(self.account.username(), &message);
+        self.comms.sender.send(ws_message).await.unwrap();
+        Ok(())
+    }
+
+    fn make_message(&self, message: &str, chat_id: &ObjectId) -> Result<WsMessage, PlasmaError> {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_micros() as u64;
+        let encrypted = self.cipher
+            .as_ref()
+            .expect("Cipher should be some if messages are read")
+            .encrypt(&message, timestamp)?;
+        let ws_message = WsMessage {
+            chat_id: chat_id.to_string(),
+            sender_id: self.account.id().to_string(),
+            content: encrypted,
+            timestamp,
+        };
+        Ok(ws_message)
     }
 
     fn handle_evt_scroll(&mut self, key: KeyCode) -> Result<bool, PlasmaError> {
