@@ -143,10 +143,8 @@ impl X3dhSharedSecret {
     pub fn to_bytes(&self) -> &[u8] {
         &self.0
     }
-}
 
-impl X3dhSharedSecret {
-    pub fn from(bytes: &[u8]) -> Self {
+    pub fn from_bytes(bytes: &[u8]) -> Self {
         X3dhSharedSecret(bytes.to_vec())
     }
 }

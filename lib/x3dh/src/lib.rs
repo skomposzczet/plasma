@@ -23,7 +23,7 @@ fn dh_to_shared(
     let h = Hkdf::<sha2::Sha512>::new(Some(&[0u8; 32]), &data);
     let mut okm = [0u8; 32];
     h.expand(b"x3dh", &mut okm).unwrap();
-    X3dhSharedSecret::from(&okm)
+    X3dhSharedSecret::from_bytes(&okm)
 }
 
 pub fn x3dh_sig(

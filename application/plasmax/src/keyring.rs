@@ -102,7 +102,7 @@ impl Keyring {
         let mut file = File::open(path)?;
         let mut buffer = Vec::<u8>::new();
         file.read_to_end(&mut buffer)?;
-        let secret = X3dhSharedSecret::from(&buffer);
+        let secret = X3dhSharedSecret::from_bytes(&buffer);
         Ok(secret)
     }
 
