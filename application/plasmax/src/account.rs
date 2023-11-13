@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use bson::oid::ObjectId;
 use x3dh::{handshake::{RegisterBundle, OneTimePreKeyPublicBundle, InitialMessage, PeerBundle}, keys::{IdentityKeyPair, KeyPair, SignedPreKeyPair, OneTimeKeyPair, Key, Signature, EphemeralKeyPair}, x3dh_sig, x3dh};
-use crate::{api::{Api, body::FindBody, response::Message}, chats::{Chats, get_non_user_id}, keyring::Keyring};
+use crate::{api::{Api, body::FindBody, response::Message}, chats::{Chats, get_non_user_id}, keyring::Keyring, cipher::Cipher};
 use crate::error::PlasmaError;
 
 struct KeyPack {
@@ -105,6 +105,11 @@ impl Account<Authorized> {
             };
         }
         Ok(())
+    }
+
+    pub fn get_cipher(&self, username: &str) -> Result<Cipher, PlasmaError> {
+        let secret = self.keyring.read_secret(username)?;
+        Ok(Cipher::new(secret))
     }
 
     fn make_secret_from_initial_messsage(&self, member: &str, message: InitialMessage) -> Result<(), PlasmaError> {

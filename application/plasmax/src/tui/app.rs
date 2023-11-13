@@ -1,6 +1,7 @@
 use crossterm::event::KeyCode;
-use crate::{api::{Api, ws::{ThreadComm, Ws, WsMessage}}, account::{Account, Authorized}, error::PlasmaError, chats::Chat};
+use crate::{api::{Api, ws::{ThreadComm, Ws, WsMessage}}, account::{Account, Authorized}, error::PlasmaError, chats::Chat, cipher::Cipher};
 use super::tools::{Mode, StatefulList, UserInput, MessagesBuffer};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct App {
     pub api: Api,
@@ -11,6 +12,7 @@ pub struct App {
     pub message_input: UserInput,
     pub messages_buffer: MessagesBuffer,
     pub comms: ThreadComm<WsMessage>,
+    pub cipher: Option<Cipher>,
 }
 
 impl App {
@@ -28,6 +30,7 @@ impl App {
             message_input: UserInput::new(),
             messages_buffer: MessagesBuffer::new(un),
             comms,
+            cipher: None,
         };
         Ok(app)
     }
@@ -37,7 +40,12 @@ impl App {
             Ok(mess) => mess,
             Err(_) => return,
         };
-        self.messages_buffer.push("other", &message.content);
+        let decrypted = self.cipher
+            .as_ref()
+            .unwrap()
+            .decrypt(&message.content, message.timestamp)
+            .unwrap();
+        self.messages_buffer.push("other", &decrypted);
     }
 
     pub fn calculate_scroll(&self, area_height: u16, text_height: u16) -> u16 {
@@ -80,6 +88,10 @@ impl App {
             .ensure_secret(&self.api, &chat.id, &chat.user.username)
             .await
             .unwrap();
+        let cipher = self.account
+            .get_cipher(&chat.user.username)
+            .unwrap();
+        self.cipher = Some(cipher);
         let oid = self.account.id();
         self.messages_buffer = MessagesBuffer::new(self.account.username().clone());
         for message in self.account.messages(&self.api, &chat.id).await.unwrap().iter() {
@@ -87,7 +99,12 @@ impl App {
                 true => self.account.username().clone(),
                 false => self.items.get().unwrap().user.username.clone(),
             };
-            self.messages_buffer.push(&username, &message.message);
+            let decrypted = self.cipher
+                .as_ref()
+                .unwrap()
+                .decrypt(&message.message, message.timestamp)
+                .unwrap();
+            self.messages_buffer.push(&username, &decrypted);
         }
     }
 
@@ -162,13 +179,23 @@ impl App {
                     Some(chat) => chat,
                     None => return,
                 };
-                let message = WsMessage {
+                let timestamp = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .expect("Time went backwards")
+                    .as_micros() as u64;
+                let encrypted = self.cipher
+                    .as_ref()
+                    .unwrap()
+                    .encrypt(&message, timestamp)
+                    .unwrap();
+                let ws_message = WsMessage {
                     chat_id: current_chat.id.to_string(),
                     sender_id: self.account.id().clone().to_string(),
-                    content: message,
+                    content: encrypted,
+                    timestamp,
                 };
-                self.messages_buffer.push(self.account.username(), &message.content);
-                self.comms.sender.send(message).await.unwrap();
+                self.messages_buffer.push(self.account.username(), &message);
+                self.comms.sender.send(ws_message).await.unwrap();
             },
             _ => {},
         }
