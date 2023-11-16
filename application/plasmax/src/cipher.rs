@@ -56,3 +56,57 @@ impl Cipher {
         Ok(message)
     }
 }
+
+#[cfg(test)]
+mod cipher_tests {
+    use rand::Rng;
+    use x3dh::keys::X3dhSharedSecret;
+    use super::Cipher;
+
+    fn cipher_random_key() -> Cipher {
+        let bytes = rand::thread_rng().gen::<[u8; 32]>();
+        Cipher::new(X3dhSharedSecret::from_bytes(&bytes))
+    }
+
+    #[test]
+    fn enc_dec_correct() {
+        let cipher = cipher_random_key();
+        let message = String::from("message");
+        let timestamp = 0u64;
+
+        let encrypted = cipher.encrypt(&message, timestamp)
+            .unwrap();
+        let decrypted = cipher.decrypt(&encrypted, timestamp)
+            .unwrap();
+
+        assert_eq!(message, decrypted);
+    }
+
+    #[test]
+    fn enc_dec_different_timestamp() {
+        let cipher = cipher_random_key();
+        let message = String::from("message");
+        let timestamp1 = 0u64;
+        let timestamp2 = 1u64;
+
+        let encrypted = cipher.encrypt(&message, timestamp1)
+            .unwrap();
+        let decrypted_result = cipher.decrypt(&encrypted, timestamp2);
+
+        assert!(decrypted_result.is_err());
+    }
+
+    #[test]
+    fn enc_dec_different_secret_key() {
+        let cipher1 = cipher_random_key();
+        let cipher2 = cipher_random_key();
+        let message = String::from("message");
+        let timestamp = 0u64;
+
+        let encrypted = cipher1.encrypt(&message, timestamp)
+            .unwrap();
+        let decrypted_result = cipher2.decrypt(&encrypted, timestamp);
+
+        assert!(decrypted_result.is_err());
+    }
+}
