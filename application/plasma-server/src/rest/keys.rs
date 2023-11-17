@@ -66,13 +66,15 @@ async fn add_bundle_handle(db: Arc<Db>, oid: String, bundle: handshake::Register
 async fn get_bundle_handle(db: Arc<Db>, oid: String, username: String) -> Result<Json, Rejection> {
     let user = User::get_by_username(&db, &username).await?;
     let user_id = user.id().ok_or(Error::InternalError)?;
-    let bundle = RegisterBundle::get_by_user(&db, &user_id).await?.bundle.deserialize();
+    let register_bundle = RegisterBundle::get_by_user(&db, &user_id).await?;
+    let bundle = register_bundle.bundle.deserialize();
     let peer_bundle = handshake::PeerBundle {
         identity: bundle.identity,
         signature: bundle.signature,
         signed_pre: bundle.signed_pre,
         one_time_pre: bundle.one_time_pres.first().ok_or(Error::InternalError)?.clone(),
     }.serialize();
+    RegisterBundle::pop_one_time_key(&db, &register_bundle.id.expect("Record from DB has OID")).await?;
     let response = json!({
         "bundle": peer_bundle
     });

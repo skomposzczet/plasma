@@ -65,6 +65,23 @@ impl RegisterBundle {
         
         Ok(bundle)
     }
+
+    pub async fn pop_one_time_key(db: &Db, bundle_id: &ObjectId) -> Result<(), Error> {
+        let bundledb = db
+            .database(DATABASE)
+            .collection::<RegisterBundle>(BUNDLE_COLLECTION);
+        let query = doc!{
+            "_id": bundle_id,
+        };
+        let update = doc!{
+            "$pop": {
+                "bundle.one_time_pres": -1
+            },
+        };
+        bundledb.update_one(query, update, None).await
+            .map_err(|_| Error::DbError("update bundle, pop onetime", format!("{}", bundle_id)))?;
+        Ok(())
+    }
 }
 
 impl InitialMessage {
