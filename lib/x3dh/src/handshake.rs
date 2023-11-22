@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use crate::keys::{Signature, SignedPreKeyPublic, IdentityKeyPublic, OneTimePreKeyPublic, OneTimeKeyPair, EphemeralKeyPublic, KeyPair, Key};
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OneTimePreKeyPublicBundle (OneTimePreKeyPublic, u16);
 
 impl OneTimePreKeyPublicBundle {
@@ -27,6 +27,7 @@ impl OneTimePreKeyPublicBundle {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RegisterBundle {
     pub identity: IdentityKeyPublic,
     pub signed_pre: SignedPreKeyPublic,
@@ -68,6 +69,7 @@ impl RegisterBundleBinary {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PeerBundle {
     pub identity: IdentityKeyPublic,
     pub signed_pre: SignedPreKeyPublic,
@@ -105,6 +107,7 @@ impl PeerBundleBinary {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InitialMessage {
     pub identity: IdentityKeyPublic,
     pub ephemeral: EphemeralKeyPublic,
@@ -138,3 +141,67 @@ impl InitialMessageBinary {
     }
 }
 
+#[cfg(test)]
+mod handshake_test {
+    use rand::Rng;
+
+    use crate::keys::{IdentityKeyPair, KeyPair, SignedPreKeyPair, Key, OneTimeKeyPair, EphemeralKeyPair};
+
+    use super::{RegisterBundle, OneTimePreKeyPublicBundle, PeerBundle, InitialMessage};
+
+    fn random_register_bundle() -> RegisterBundle {
+        let mut rng = rand::rngs::OsRng::default();
+        let identity = IdentityKeyPair::generate(&mut rng);
+        let signed_pre = SignedPreKeyPair::generate(&mut rng);
+        let sig = identity.sign(&signed_pre.public().to_bytes());
+        RegisterBundle {
+            identity: identity.public().clone(),
+            signed_pre: signed_pre.public().clone(),
+            signature: sig,
+            one_time_pres: vec![OneTimePreKeyPublicBundle::from_pair(&OneTimeKeyPair::generate(&mut rng))],
+        }
+    }
+
+    fn random_peer_bundle() -> PeerBundle {
+        let b = random_register_bundle();
+        PeerBundle {
+            identity: b.identity,
+            signed_pre: b.signed_pre,
+            signature: b.signature,
+            one_time_pre: b.one_time_pres[0].clone(),
+        }
+    }
+
+    fn random_initial_message() -> InitialMessage {
+        let mut rng = rand::rngs::OsRng::default();
+        InitialMessage {
+            identity: IdentityKeyPair::generate(&mut rng).public().clone(),
+            ephemeral: EphemeralKeyPair::generate(&mut rng).public().clone(),
+            one_time_idx: rand::thread_rng().gen(),
+        }
+    }
+
+    #[test]
+    fn register_bundle_deserialize_serialize() {
+        let rb = random_register_bundle();
+        let rb_clone = rb.serialize().deserialize();
+
+        assert_eq!(rb, rb_clone);
+    }
+
+    #[test]
+    fn peer_bundl_deserialize_serialize () {
+        let pb = random_peer_bundle();
+        let pb_clone = pb.serialize().deserialize();
+
+        assert_eq!(pb, pb_clone);
+    }
+
+    #[test]
+    fn initial_message_deserialize_serialize() {
+        let im = random_initial_message();
+        let im_clone = im.serialize().deserialize();
+
+        assert_eq!(im, im_clone);
+    }
+}

@@ -34,7 +34,7 @@ pub fn x3dh_sig(
     identity_you: &IdentityKeyPublic,
     one_time_pre_you: &OneTimePreKeyPublic
 ) -> Result<X3dhSharedSecret, X3dhError> {
-    identity_you.verify(&signed_pre_you.key().to_sec1_bytes(), signature)?;
+    identity_you.verify(&signed_pre_you.to_bytes(), signature)?;
 
     let dh1 = identity_me.diffie_hellman(signed_pre_you);
     let dh2 = ephemeral_me.diffie_hellman(identity_you);
@@ -64,7 +64,7 @@ mod x3dh_test {
     use crate::{keys::{IdentityKeyPair, EphemeralKeyPair, SignedPreKeyPair, OneTimeKeyPair, KeyPair, Key}, x3dh_sig, x3dh};
 
     #[test]
-    fn x3dh_protocol_test() {
+    fn x3dh_protocol() {
         let mut rng = rand::rngs::OsRng::default();
 
         let ika = IdentityKeyPair::generate(&mut rng);
@@ -73,7 +73,7 @@ mod x3dh_test {
         let ikb = IdentityKeyPair::generate(&mut rng);
         let spb = SignedPreKeyPair::generate(&mut rng);
         let opb = OneTimeKeyPair::generate(&mut rng).with_index(0);
-        let sig = ikb.sign(&spb.public().key().to_sec1_bytes());
+        let sig = ikb.sign(&spb.public().to_bytes());
 
         let ssa = x3dh_sig(
             &sig,
@@ -91,6 +91,6 @@ mod x3dh_test {
             &opb,
         );
 
-        assert_eq!(ssa.to_bytes(), ssb.to_bytes());
+        assert_eq!(ssa, ssb);
     }
 }

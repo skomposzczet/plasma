@@ -5,6 +5,7 @@ use p256::{PublicKey, ecdsa::{SigningKey, signature::Signer}};
 use rand::{CryptoRng, RngCore};
 use sha2::digest::generic_array::GenericArray;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Signature (p256::ecdsa::Signature);
 
 impl Signature {
@@ -27,7 +28,7 @@ pub trait Key {
     fn from_bytes(bytes: &[u8]) -> Self;
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IdentityKeyPublic (PublicKey);
 
 impl IdentityKeyPublic {
@@ -53,7 +54,7 @@ impl Key for IdentityKeyPublic {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EphemeralKeyPublic (PublicKey);
 
 impl Key for EphemeralKeyPublic {
@@ -72,7 +73,7 @@ impl Key for EphemeralKeyPublic {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedPreKeyPublic (PublicKey);
 
 impl Key for SignedPreKeyPublic {
@@ -91,7 +92,7 @@ impl Key for SignedPreKeyPublic {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OneTimePreKeyPublic (PublicKey);
 
 impl Key for OneTimePreKeyPublic {
@@ -110,6 +111,7 @@ impl Key for OneTimePreKeyPublic {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PrivateKey (p256::SecretKey);
 
 impl PrivateKey {
@@ -137,6 +139,7 @@ impl SharedSecret {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct X3dhSharedSecret (Vec<u8>);
 
 impl X3dhSharedSecret {
@@ -171,6 +174,7 @@ pub trait KeyPair {
     fn from_bytes(bytes: &[u8]) -> Self;
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IdentityKeyPair (IdentityKeyPublic, PrivateKey);
 
 impl KeyPair for IdentityKeyPair {
@@ -205,6 +209,7 @@ impl IdentityKeyPair {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EphemeralKeyPair (EphemeralKeyPublic, PrivateKey);
 
 impl KeyPair for EphemeralKeyPair {
@@ -232,6 +237,7 @@ impl KeyPair for EphemeralKeyPair {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedPreKeyPair (SignedPreKeyPublic, PrivateKey);
 
 impl KeyPair for SignedPreKeyPair {
@@ -259,6 +265,7 @@ impl KeyPair for SignedPreKeyPair {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OneTimeKeyPair (OneTimePreKeyPublic, PrivateKey, u16);
 
 impl KeyPair for OneTimeKeyPair {
@@ -302,5 +309,103 @@ impl OneTimeKeyPair {
 
     pub fn index(&self) -> u16 {
         self.2
+    }
+}
+
+#[cfg(test)]
+mod keys_test {
+    use super::{IdentityKeyPair, KeyPair, SignedPreKeyPair, Key};
+
+    fn random_identity_key() -> IdentityKeyPair {
+        let mut rng = rand::rngs::OsRng::default();
+        IdentityKeyPair::generate(&mut rng)
+    }
+
+    #[test]
+    fn identity_dh() {
+        let id1 = random_identity_key();
+        let id2 = random_identity_key();
+        
+        let dh1 = id1.diffie_hellman(id2.public());
+        let dh2 = id2.diffie_hellman(id1.public());
+
+        assert_eq!(dh1.to_bytes(), dh2.to_bytes());
+    }
+
+    #[test]
+    fn idenity_dh_wrong_key() {
+        let id1 = random_identity_key();
+        let id2 = random_identity_key();
+        let id3 = random_identity_key();
+
+        let dh1 = id1.diffie_hellman(id2.public());
+        let dh2 = id2.diffie_hellman(id3.public());
+
+        assert_ne!(dh1.to_bytes(), dh2.to_bytes());
+    }
+
+    #[test]
+    fn identity_sign_verify() {
+        let identity = random_identity_key();
+        let mut rng = rand::rngs::OsRng::default();
+        let signed = SignedPreKeyPair::generate(&mut rng);
+
+        let signature = identity.sign(&signed.public().to_bytes());
+        let result = identity
+            .public()
+            .verify(&signed.public().to_bytes(), &signature);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn identity_sign_verify_wrong_signed() {
+        let identity = random_identity_key();
+        let mut rng = rand::rngs::OsRng::default();
+        let signed1 = SignedPreKeyPair::generate(&mut rng);
+        let signed2 = SignedPreKeyPair::generate(&mut rng);
+
+        let signature = identity.sign(&signed1.public().to_bytes());
+        let result = identity
+            .public()
+            .verify(&signed2.public().to_bytes(), &signature);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn identity_sign_verify_wrong_identity() {
+        let identity1 = random_identity_key();
+        let identity2 = random_identity_key();
+        let mut rng = rand::rngs::OsRng::default();
+        let signed = SignedPreKeyPair::generate(&mut rng);
+
+        let signature = identity1.sign(&signed.public().to_bytes());
+        let result = identity2
+            .public()
+            .verify(&signed.public().to_bytes(), &signature);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn identity_sign_different_keys_different_signatures() {
+        let identity1 = random_identity_key();
+        let identity2 = random_identity_key();
+        let mut rng = rand::rngs::OsRng::default();
+        let signed = SignedPreKeyPair::generate(&mut rng);
+
+        let signature1 = identity1.sign(&signed.public().to_bytes());
+        let signature2 = identity2.sign(&signed.public().to_bytes());
+
+        assert_ne!(signature1, signature2);
+    }
+
+    #[test]
+    fn identity_same_from_bytes_same() {
+        let identity1 = random_identity_key();
+        let identity2 = IdentityKeyPair::from_bytes(&identity1.to_bytes());
+
+        assert_eq!(identity1, identity2);
     }
 }
